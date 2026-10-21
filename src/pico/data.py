@@ -32,8 +32,16 @@ def profile_dataset(df: pd.DataFrame) -> dict:
                    identifier=unique == len(df) and len(df) > 20,
                    constant=unique <= 1)
         if numeric and s.notna().any():
+            q1, q3 = float(s.quantile(.25)), float(s.quantile(.75))
+            iqr = q3 - q1
             row.update(mean=float(s.mean()), median=float(s.median()),
-                       minimum=float(s.min()), maximum=float(s.max()))
+                       minimum=float(s.min()), maximum=float(s.max()),
+                       q1=q1, q3=q3,
+                       outliers_iqr=int(((s < q1 - 1.5 * iqr) | (s > q3 + 1.5 * iqr)).sum()))
+        elif s.notna().any():
+            counts = s.value_counts()
+            row.update(most_frequent=str(counts.index[0]),
+                       largest_class_percent=float(counts.iloc[0] / s.notna().sum() * 100))
         columns.append(row)
     return dict(rows=len(df), columns=len(df.columns),
                 missing_cells=int(df.isna().sum().sum()),

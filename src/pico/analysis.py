@@ -108,14 +108,18 @@ def execute_analysis(df: pd.DataFrame, h: Hypothesis, index: int = 1) -> Evidenc
     else:
         required = [h.y] + ([] if h.kind == 'missingness' else [h.x]) + ([h.control] if h.control else [])
         d = df.dropna(subset=required).copy()
-        d['__group'] = df.loc[d.index, h.x].isna().map({True: 'Missing', False: 'Present'}) if h.kind == 'missingness' else _group(d[h.x])
+        group_key, stratum_key = '__pico_group', '__pico_stratum'
+        while group_key in d.columns or stratum_key in d.columns:
+            group_key += '_'
+            stratum_key += '_'
+        d[group_key] = df.loc[d.index, h.x].isna().map({True: 'Missing', False: 'Present'}) if h.kind == 'missingness' else _group(d[h.x])
         if h.kind == 'stratified':
-            d['__stratum'] = _group(d[h.control])
+            d[stratum_key] = _group(d[h.control])
         else:
-            d['__stratum'] = 'All rows'
+            d[stratum_key] = 'All rows'
         tables, effects, p_values, counts = [], [], [], []
-        for label, subset in d.groupby('__stratum', observed=True):
-            ct = pd.crosstab(subset['__group'], subset[h.y])
+        for label, subset in d.groupby(stratum_key, observed=True):
+            ct = pd.crosstab(subset[group_key], subset[h.y])
             if min(ct.shape) < 2 or ct.values.sum() < 10:
                 continue
             chi, pv, _, expected = stats.chi2_contingency(ct)

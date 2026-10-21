@@ -65,7 +65,8 @@ def investigate(df: pd.DataFrame, target: str, question: str = '', budget: int =
     pool = candidates(df, target)
     # Start with sufficiently observed numerical predictors; missingness remains eligible.
     pool.sort(key=lambda h: (h.kind == 'missingness',
-                             -float(df[h.x].notna().mean()), h.x))
+                             not pd.api.types.is_numeric_dtype(df[h.x]),
+                             -min(df[h.x].nunique(), 1000), h.x))
     seen = set()
 
     def emit(stage, message):
@@ -102,7 +103,8 @@ def investigate(df: pd.DataFrame, target: str, question: str = '', budget: int =
         # confounding check with an observed numeric predictor, not a fixed checklist.
         if h.kind == 'groups' and evidence.effect is not None and evidence.effect >= .1:
             controls = [c for c in df.select_dtypes(include='number').columns
-                        if c not in {h.x, h.y} and 2 <= df[c].nunique() <= len(df) * .8]
+                        if c not in {h.x, h.y} and df[c].nunique() >= 2
+                        and c.lower() not in {'id', 'index', 'row_id', 'customer_id'}]
             if controls:
                 # Pick the control most associated with the original numeric predictor.
                 if pd.api.types.is_numeric_dtype(df[h.x]):
