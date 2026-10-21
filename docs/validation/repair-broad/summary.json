@@ -1,0 +1,184 @@
+{
+  "fault_injection": true,
+  "git_sha": "c770f10055850307722e581b762f09893634d781",
+  "model_responses": [
+    {
+      "model": "qwen2.5-coder:7b",
+      "done_reason": "stop",
+      "prompt_eval_count": 1546,
+      "eval_count": 404,
+      "total_duration": 88690036083,
+      "load_duration": 5355057583,
+      "eval_duration": 56696779000
+    },
+    {
+      "model": "qwen2.5-coder:7b",
+      "done_reason": "stop",
+      "prompt_eval_count": 1989,
+      "eval_count": 404,
+      "total_duration": 71578710667,
+      "load_duration": 1304667,
+      "eval_duration": 61758429000
+    },
+    {
+      "model": "qwen2.5-coder:7b",
+      "done_reason": "stop",
+      "prompt_eval_count": 2149,
+      "eval_count": 625,
+      "total_duration": 96072023000,
+      "load_duration": 2912958,
+      "eval_duration": 86616089000
+    },
+    {
+      "model": "qwen2.5-coder:7b",
+      "done_reason": "stop",
+      "prompt_eval_count": 2710,
+      "eval_count": 454,
+      "total_duration": 79332196084,
+      "load_duration": 2223084,
+      "eval_duration": 67848736999
+    },
+    {
+      "model": "qwen2.5-coder:7b",
+      "done_reason": "stop",
+      "prompt_eval_count": 2543,
+      "eval_count": 454,
+      "total_duration": 71256533750,
+      "load_duration": 3069000,
+      "eval_duration": 65847141000
+    }
+  ],
+  "question": "Plot churn rates across income quartiles as a PNG. Use x=income and y=churn in the hypothesis header. Then investigate purchase-frequency quartiles with x=purchases and y=churn. Describe associations only.",
+  "model": "qwen2.5-coder:7b",
+  "model_digest": "dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364",
+  "elapsed_seconds": 419.29,
+  "engine": "python",
+  "attempts": 5,
+  "findings": 1,
+  "stop_reason": "Reached the 5-analysis budget.",
+  "executions": [
+    {
+      "id": "A01",
+      "status": "error",
+      "error": "Python exited with status 1; inspect stderr.",
+      "duration": 0.767,
+      "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+      "charts": []
+    },
+    {
+      "id": "A02",
+      "status": "ok",
+      "error": null,
+      "duration": 3.167,
+      "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+      "charts": [
+        "income_churn.png"
+      ]
+    },
+    {
+      "id": "A03",
+      "status": "error",
+      "error": "Invalid sandbox output: Evidence rows must contain 1\u201320 scalar fields.",
+      "duration": 2.433,
+      "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+      "charts": []
+    },
+    {
+      "id": "A04",
+      "status": "error",
+      "error": "Invalid sandbox output: Evidence rows must contain 1\u201320 scalar fields.",
+      "duration": 2.932,
+      "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+      "charts": []
+    },
+    {
+      "id": "A05",
+      "status": "error",
+      "error": "Invalid sandbox output: Evidence rows must contain 1\u201320 scalar fields.",
+      "duration": 2.387,
+      "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+      "charts": []
+    }
+  ],
+  "conclusions": [
+    "Churn rates vary across income quartiles with a p-value of 0.0000."
+  ],
+  "activity": [
+    {
+      "stage": "Profile",
+      "message": "Inspected 2,400 rows and 5 columns."
+    },
+    {
+      "stage": "Data check",
+      "message": "7 duplicate rows may violate independence."
+    },
+    {
+      "stage": "Plan",
+      "message": "Generate and execute up to 5 Python investigations in disposable containers."
+    },
+    {
+      "stage": "Investigate",
+      "message": "Plot churn rates across income quartiles as a PNG. Use x=income and y=churn in the hypothesis header. Then investigate purchase-frequency quartiles with x=purchases and y=churn. Describe associations only."
+    },
+    {
+      "stage": "Execution failed",
+      "message": "A01: Python exited with status 1; inspect stderr."
+    },
+    {
+      "stage": "Replan",
+      "message": "Return the execution error to the model for a repaired or different analysis."
+    },
+    {
+      "stage": "Investigate",
+      "message": "Plot churn rates across income quartiles as a PNG. Use x=income and y=churn in the hypothesis header. Then investigate purchase-frequency quartiles with x=purchases and y=churn. Describe associations only."
+    },
+    {
+      "stage": "Evaluate",
+      "message": "A02: Churn rates vary across income quartiles with a p-value of 0.0000. n=2400."
+    },
+    {
+      "stage": "Replan",
+      "message": "Use the executed results to decide the next investigation."
+    },
+    {
+      "stage": "Investigate",
+      "message": "Plot churn rates across purchase-frequency quartiles as a PNG. Use x=purchases and y=churn in the hypothesis header. Then investigate churn rates across income quartiles with x=income and y=churn. Describe associations only."
+    },
+    {
+      "stage": "Execution failed",
+      "message": "A03: Invalid sandbox output: Evidence rows must contain 1\u201320 scalar fields."
+    },
+    {
+      "stage": "Replan",
+      "message": "Return the execution error to the model for a repaired or different analysis."
+    },
+    {
+      "stage": "Investigate",
+      "message": "Plot churn rates across income quartiles as a PNG. Use x=income and y=churn in the hypothesis header. Then investigate purchase-frequency quartiles with x=purchases and y=churn. Describe associations only."
+    },
+    {
+      "stage": "Execution failed",
+      "message": "A04: Invalid sandbox output: Evidence rows must contain 1\u201320 scalar fields."
+    },
+    {
+      "stage": "Replan",
+      "message": "Return the execution error to the model for a repaired or different analysis."
+    },
+    {
+      "stage": "Investigate",
+      "message": "Plot churn rates across income quartiles as a PNG. Use x=income and y=churn in the hypothesis header. Then investigate purchase-frequency quartiles with x=purchases and y=churn. Describe associations only."
+    },
+    {
+      "stage": "Execution failed",
+      "message": "A05: Invalid sandbox output: Evidence rows must contain 1\u201320 scalar fields."
+    },
+    {
+      "stage": "Statistical review",
+      "message": "Holm adjustment across 1 reported tests. Results remain exploratory under adaptive selection."
+    },
+    {
+      "stage": "Complete",
+      "message": "Reached the 5-analysis budget."
+    }
+  ]
+}

@@ -134,6 +134,11 @@ Use from pico_tools import load_dataset, save_result. Call load_dataset() with n
 Call save_result(n=..., conclusion=..., limitations=[...], table=[aggregate dicts], statistic=..., p_value=..., effect=...,
                  method=..., assumptions=[...], diagnostics={...}). All measured values must come from your executed code.
 Write one concise analysis, usually 20–40 lines. Do not build a whole modeling/EDA pipeline or wrap every line in try/except.
+Execute exactly ONE comparison per proposal. statistic, p_value and effect must each be a single scalar or None, never lists.
+table must be a FLAT list of dictionaries with scalar values, e.g. counts.reset_index().to_dict(orient='records').
+Never nest tables inside table. Choose any other comparison in a later proposal.
+For a rate plot normalize counts within each group, e.g. counts.div(counts.sum(axis=1), axis=0).
+Label a count plot as counts and a normalized plot as proportions; keep raw counts for chi-square testing.
 Do not repeat successful code. No causal claims. Report uncertainty, sparse groups, missingness,
 multiple testing, and leakage when relevant. Do not fabricate measurements.
 This is statistical investigation, not a machine-learning prediction benchmark.

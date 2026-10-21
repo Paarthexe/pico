@@ -1,0 +1,43 @@
+import pandas as pd
+from scipy.stats import chi2_contingency
+import matplotlib.pyplot as plt
+from pico_tools import load_dataset, save_result
+
+# Load dataset
+df = load_dataset()
+
+# Handle missing values
+df.dropna(subset=['income', 'purchases'], inplace=True)
+
+# Create income quartiles
+df['income_quartile'] = pd.qcut(df['income'], q=4, labels=False)
+
+# Create purchase-frequency quartiles
+df['purchases_quartile'] = pd.qcut(df['purchases'], q=4, labels=False)
+
+# Chi-square test for income quartiles
+contingency_income = pd.crosstab(df['income_quartile'], df['churn'])
+chi2_income, p_income, dof_income, expected_income = chi2_contingency(contingency_income)
+min_expected_count_income = expected_income.min()
+
+# Plot income quartiles
+plt.figure(figsize=(10, 6))
+contingency_income.plot(kind='bar', stacked=True)
+plt.title('Churn Rates Across Income Quartiles')
+plt.xlabel('Income Quartile')
+plt.ylabel('Churn Rate')
+plt.savefig('/output/income_churn.png')
+
+# Save results
+save_result(
+    n=len(df),
+    conclusion="Churn rates vary across income quartiles with a p-value of {:.4e}.".format(p_income),
+    limitations=["Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.", "7 duplicate rows may violate independence."],
+    table=[contingency_income.to_dict(orient='records')],
+    statistic=[chi2_income],
+    p_value=[p_income],
+    effect=[None],
+    method="Chi-square test",
+    assumptions=["Independence", "Equal expected counts"],
+    diagnostics={"min_expected_count": min_expected_count_income}
+)

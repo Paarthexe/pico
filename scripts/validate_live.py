@@ -29,6 +29,9 @@ def main() -> None:
         help="Explicitly inject a labeled first-attempt failure to test live repair.",
     )
     parser.add_argument("--budget", type=int, default=3)
+    parser.add_argument(
+        "--minimum-findings", type=int, default=2, help="Required executed findings for this smoke test."
+    )
     parser.add_argument("--output", type=Path, default=Path("/tmp/pico-live-validation"))
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -92,8 +95,10 @@ def main() -> None:
     )
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary, indent=2), flush=True)
-    if len(run.evidence) < 2:
-        raise SystemExit("Live validation did not produce at least two executed findings; inspect its saved evidence.")
+    if len(run.evidence) < args.minimum_findings:
+        raise SystemExit(
+            f"Live validation did not produce {args.minimum_findings} executed findings; inspect its saved evidence."
+        )
 
 
 if __name__ == "__main__":
