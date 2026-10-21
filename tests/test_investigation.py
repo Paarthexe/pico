@@ -83,3 +83,40 @@ def test_export_contains_linked_evidence_and_replay():
         assert nb['nbformat'] == 4
         compile(z.read('code/A01.py'), '<replay>', 'exec')
         assert 'dataset.csv' not in z.namelist()
+
+
+def test_reserved_column_names_do_not_change_outcome():
+    df = pd.DataFrame({'x': [0] * 30 + [1] * 30, '__pico_group': ['a'] * 30 + ['b'] * 30})
+    e = execute_analysis(df, Hypothesis('groups', 'x', '__pico_group', 'test'))
+    assert e.effect > .9
+    assert {r['category'] for r in e.table} == {'a', 'b'}
+
+
+def test_missingness_of_constant_observed_value_is_eligible():
+    from pico.analysis import candidates
+    df = pd.DataFrame({'x': [1] * 20 + [None] * 20, 'y': ['a'] * 20 + ['b'] * 20})
+    assert any(h.kind == 'missingness' and h.x == 'x' for h in candidates(df, 'y'))
+
+
+def test_ollama_contract_and_rejected_index(monkeypatch):
+    from pico.agent import Investigation, ollama_choice
+    from pico.analysis import candidates
+    df = demo_dataset()
+    run = Investigation(profile_dataset(df), 'churn', 'why churn?', 'Ollama', 5)
+    pool = candidates(df, 'churn')
+    answer = {'index': 0, 'reason': 'Examine this relationship first.'}
+
+    def fake_open(request, timeout):
+        assert request.full_url == 'http://127.0.0.1:11434/api/chat'
+        payload = json.loads(request.data)
+        assert payload['stream'] is False and payload['format'] == 'json'
+        context = json.loads(payload['messages'][1]['content'])
+        assert 'options' in context and 'evidence' in context
+        assert 'table' not in context
+        return BytesIO(json.dumps({'message': {'content': json.dumps(answer)}}).encode())
+
+    monkeypatch.setattr('pico.agent.urlopen', fake_open)
+    assert ollama_choice(pool, run, 'test-model') == (0, answer['reason'])
+    answer['index'] = True
+    with pytest.raises(ValueError, match='invalid option'):
+        ollama_choice(pool, run, 'test-model')

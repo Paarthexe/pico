@@ -39,7 +39,12 @@ def candidates(df: pd.DataFrame, target: str) -> list[Hypothesis]:
     result = []
     for name in df.columns:
         s = df[name]
-        if name == target or s.nunique() < 2:
+        if name == target:
+            continue
+        if s.isna().any() and s.notna().any() and not numeric_target:
+            result.append(Hypothesis('missingness', name, target,
+                                     f'Check whether missing {name} values carry information about {target}.'))
+        if s.nunique() < 2:
             continue
         numeric = pd.api.types.is_numeric_dtype(s) and not pd.api.types.is_bool_dtype(s)
         if not numeric and (s.nunique() > 20 or s.nunique() == len(df)):
@@ -48,9 +53,6 @@ def candidates(df: pd.DataFrame, target: str) -> list[Hypothesis]:
         if numeric_target and not numeric:
             kind = 'numeric_groups'
         result.append(Hypothesis(kind, name, target, f'Test whether {name} is associated with {target}.'))
-        if s.isna().any() and not numeric_target:
-            result.append(Hypothesis('missingness', name, target,
-                                     f'Check whether missing {name} values carry information about {target}.'))
     return result
 
 
@@ -70,7 +72,10 @@ def validate(df: pd.DataFrame, h: Hypothesis):
 
 def _group(s: pd.Series) -> pd.Series:
     if pd.api.types.is_numeric_dtype(s) and s.nunique() > 5:
-        return pd.qcut(s, 4, duplicates='drop').astype(str).where(s.notna())
+        bins = pd.qcut(s, 4, duplicates='drop')
+        bins = bins.cat.rename_categories([f'Q{i + 1} {interval}'
+                                          for i, interval in enumerate(bins.cat.categories)])
+        return bins.astype(str).where(s.notna())
     if s.nunique() > 20:
         raise ValueError('Grouping column has more than 20 categories.')
     return s.astype(str).where(s.notna())

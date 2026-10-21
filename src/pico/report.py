@@ -25,12 +25,19 @@ def generate_plot(e: Evidence) -> bytes:
             ax.set(xlabel=h['x'], ylabel=f"Median {h['y']}")
         else:
             # Each group/stratum sums to 100%; no privileged positive label assumed.
-            table['label'] = table['group'] + (' / ' + table['stratum'] if h['control'] else '')
-            pivot = table.pivot(index='label', columns='category', values='proportion').fillna(0)
+            def short_label(value):
+                return value.split(' ', 1)[0] if value.startswith(('Q1 ', 'Q2 ', 'Q3 ', 'Q4 ')) else value
+            pivot = table.pivot(index=['stratum', 'group'], columns='category', values='proportion').fillna(0)
             pivot.plot.bar(stacked=True, ax=ax, colormap='tab20', width=.7)
+            ax.set_xticklabels([short_label(group) + (' / ' + short_label(stratum) if h['control'] else '')
+                                for stratum, group in pivot.index])
             ax.set(xlabel=h['x'], ylabel=f"Proportion of {h['y']}", ylim=(0, 1))
+            if h['control']:
+                ax.set_xlabel(f"{h['x']} group / {h['control']} stratum")
             ax.legend(title=h['y'], bbox_to_anchor=(1.01, 1), loc='upper left')
         ax.set_title(f"{e.id} · {h['x']} and {h['y']}", loc='left', pad=16)
+        if h['kind'] == 'correlation' and e.n > len(table):
+            ax.set_title(f"{e.id} · {h['x']} and {h['y']} (first {len(table):,} complete rows)", loc='left', pad=16)
         ax.tick_params(axis='x', labelrotation=35)
         output = BytesIO()
         fig.savefig(output, format='png', dpi=140)
@@ -69,7 +76,7 @@ def notebook(run: Investigation) -> str:
         cells.append(dict(cell_type='code', metadata={}, execution_count=None, outputs=[],
                           source=e.code.splitlines(keepends=True)))
     return json.dumps(dict(cells=cells, metadata={'kernelspec': {'display_name': 'Python 3',
-                      'language': 'python', 'name': 'python3'}}, nbformat=4, nbformat_minor=5), indent=2)
+                      'language': 'python', 'name': 'python3'}}, nbformat=4, nbformat_minor=4), indent=2)
 
 
 def export_bundle(run: Investigation) -> bytes:
