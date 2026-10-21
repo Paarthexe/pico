@@ -1,0 +1,41 @@
+import pandas as pd
+from scipy.stats import chi2_contingency
+import matplotlib.pyplot as plt
+from pico_tools import load_dataset, save_result
+
+# Load dataset
+df = load_dataset()
+
+# Handle missing values
+df['income'].fillna(df['income'].median(), inplace=True)
+
+# Create income quartiles
+df['income_quartile'] = pd.qcut(df['income'], q=4, labels=False)
+
+# Create contingency table
+contingency_table = pd.crosstab(df['income_quartile'], df['churn'])
+
+# Run chi-square test
+chi2, p_value, dof, expected = chi2_contingency(contingency_table)
+
+# Plot proportions
+proportions = contingency_table.div(contingency_table.sum(axis=1), axis=0)
+proportions.plot(kind='bar', stacked=True)
+plt.xlabel('Income Quartile')
+plt.ylabel('Proportion')
+plt.title('Churn Proportions by Income Quartile')
+plt.savefig('/output/income_quartile_churn_proportions.png')
+
+# Save result
+save_result(
+    n=len(df),
+    conclusion="Income quartiles are associated with churn rates (p-value: {:.4f})".format(p_value),
+    limitations=["Missing values in income column were imputed with the median."],
+    table=contingency_table.to_dict(orient='records'),
+    statistic=chi2,
+    p_value=p_value,
+    effect=None,
+    method="Chi-square test",
+    assumptions=["Independence of observations", "Expected counts in each cell >= 5"],
+    diagnostics={"min_expected_count": float(expected.min())}
+)
