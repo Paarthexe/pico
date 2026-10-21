@@ -11,6 +11,13 @@ import pandas as pd
 from scipy import stats
 
 from pico.models import Evidence
+from pico.verification_numeric import RECIPES, verify_numeric
+
+
+def verify_analysis(df: pd.DataFrame, evidence: Evidence) -> dict:
+    if evidence.diagnostics.get("verification_test") in RECIPES:
+        return verify_numeric(df, evidence)
+    return verify_contingency(df, evidence)
 
 
 def verify_contingency(df: pd.DataFrame, evidence: Evidence) -> dict:

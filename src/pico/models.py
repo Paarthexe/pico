@@ -100,3 +100,16 @@ class Investigation:
     model: str | None = None
     dataset_warnings: list[dict] = field(default_factory=list)
     multiplicity: dict = field(default_factory=dict)
+    study_context: "StudyContext" = field(default_factory=lambda: StudyContext())
+
+
+@dataclass(frozen=True)
+class StudyContext:
+    subject_id: str | None = None
+    observation_time: str | None = None
+    outcome_time: str | None = None
+    post_outcome_columns: tuple[str, ...] = ()
+
+    @property
+    def excluded_columns(self) -> set[str]:
+        return {c for c in [self.subject_id, self.observation_time, self.outcome_time, *self.post_outcome_columns] if c}

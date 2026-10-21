@@ -59,7 +59,7 @@ def python_loop(
     planner = planner or PythonPlanner(run.model)
     # Fail before model generation when the security boundary is unavailable.
     executor.check_available()
-    dataset = df.to_csv(index=False).encode()
+    dataset = df.drop(columns=list(run.study_context.post_outcome_columns)).to_csv(index=False).encode()
     successful_sources = set()
     emit("Plan", f"Generate and execute up to {run.budget} Python investigations in disposable containers.")
     for index in range(1, run.budget + 1):

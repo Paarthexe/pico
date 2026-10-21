@@ -71,6 +71,8 @@ def markdown_report(run: Investigation) -> str:
         if e.method:
             lines += [f"Method: {e.method}", ""]
         if e.review:
+            if e.review.numerical_summary:
+                lines += [e.review.numerical_summary, ""]
             lines += [
                 f"Review status: {e.review.status}.",
                 f"Holm-adjusted primary p-value: {e.review.adjusted_p_value:.4g}."

@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from pico.models import Evidence, Investigation
+from pico.models import Evidence, Investigation, StudyContext
 from pico.plotting import charts_for
 from pico.report import markdown_report
 
@@ -20,6 +20,35 @@ class Options:
     budget: int
     model: str | None
     engine: str
+
+
+def study_controls(columns: list[str], target: str) -> StudyContext:
+    available = [c for c in columns if c != target]
+    with st.expander("Study context"):
+        st.caption("Identify how rows were collected. Leave unknown fields unspecified.")
+        left, right = st.columns(2)
+        with left:
+            subject = st.selectbox(
+                "Subject identifier",
+                [None, *available],
+                format_func=lambda x: x or "Not specified",
+                key="study_subject",
+            )
+            observed = st.selectbox(
+                "Observation timestamp",
+                [None, *available],
+                format_func=lambda x: x or "Not specified",
+                key="study_observed",
+            )
+        with right:
+            outcome = st.selectbox(
+                "Outcome timestamp", [None, *available], format_func=lambda x: x or "Not specified", key="study_outcome"
+            )
+            post = st.multiselect("Columns recorded after the outcome", available, key="study_post")
+        st.caption(
+            "Subject and timestamp columns are excluded as predictors. Post-outcome columns are also withheld from generated code. Repeated subjects suppress independent-row inference."
+        )
+    return StudyContext(subject, observed, outcome, tuple(sorted(post)))
 
 
 def apply_style() -> None:
@@ -99,6 +128,15 @@ def evidence_card(evidence: Evidence) -> None:
                 st.caption(
                     f"Independent calculation check: {review.verification['status']}. Study design remains unverified."
                 )
+                checked = review.verification
+                if checked.get("status") == "matched" and "effect" in checked:
+                    st.caption(f"{checked['effect_name']}: {checked['effect']:.4g}")
+                    if checked.get("inference_eligible"):
+                        st.caption(
+                            f"Pointwise 95% CI: [{checked['ci_low']:.4g}, {checked['ci_high']:.4g}]. Not selection or multiplicity adjusted."
+                        )
+                    else:
+                        st.caption("Inferential interval suppressed by study/test checks.")
             if review.adjusted_p_value is not None:
                 st.caption(
                     f"Holm-adjusted p = {review.adjusted_p_value:.4g} · {review.family_size} reported tests · exploratory"

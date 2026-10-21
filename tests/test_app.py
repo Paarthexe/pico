@@ -42,3 +42,14 @@ def test_generated_mode_surfaces_missing_docker(monkeypatch):
     assert not app.exception
     assert any("Docker fixture unavailable" in error.value for error in app.error)
     assert "run" not in app.session_state
+
+
+def test_study_controls_change_settings_and_validate_conflicting_roles():
+    app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py")).run(timeout=30)
+    app.button[0].click().run(timeout=30)
+    next(s for s in app.selectbox if s.label == "Subject identifier").select("age").run(timeout=30)
+    assert not app.exception
+    assert any("Settings have changed" in w.value for w in app.warning)
+    next(s for s in app.selectbox if s.label == "Observation timestamp").select("age").run(timeout=30)
+    assert any("distinct columns" in e.value for e in app.error)
+    assert app.button[0].disabled

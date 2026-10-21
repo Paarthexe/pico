@@ -66,6 +66,7 @@ def aggregate_context(run: Investigation) -> dict:
     return dict(
         question=run.question,
         target=run.target,
+        study_context=asdict(run.study_context),
         profile=run.profile,
         dataset_warnings=run.dataset_warnings,
         multiplicity=run.multiplicity,
@@ -149,6 +150,23 @@ The host rebuilds counts from ORIGINAL data and checks n, statistic and p_value.
 Other methods/transformations are allowed but remain unverified and excluded from inference.
 Do not substitute a wide counts table for the required group/category/count records.
 
+Additional independently verified numeric recipes (complete cases, no bins/transforms):
+- 'pearson_r': x and y numeric; result=scipy.stats.pearsonr(a,b). statistic=result.statistic.
+  effect is Pearson r. CI=result.confidence_interval(confidence_level=.95) (Fisher-z).
+- 'ols_simple': x and y numeric; result=scipy.stats.linregress(a,b). statistic=result.slope,
+  p_value=result.pvalue, effect=result.slope. 95% slope CI uses t.ppf(.975,n-2)*result.stderr.
+- 'welch_t': x has exactly two groups, y numeric. Convert x to str; sort group labels.
+  Let a be the first group and b the second. result=scipy.stats.ttest_ind(b,a,equal_var=False).
+  statistic=result.statistic, effect=mean(b)-mean(a), CI=result.confidence_interval(.95).
+For pearson_r/ols_simple table=[{'n':len(paired),'x_mean':float(paired[x].mean()),'y_mean':float(paired[y].mean())}].
+For welch_t table=[{'group':label,'n':len(values),'mean':float(values.mean()),'sd':float(values.std(ddof=1))}]
+for each group in sorted order. Use diagnostics verification_test=recipe, verification_missing='complete_case',verification_bins=0.
+The host computes effects and 95% intervals even if you omit them. If reporting bounds, include diagnostics
+ci_low, ci_high, confidence_level=.95; incorrect or partial bounds fail verification.
+All intervals are pointwise and assume independent observations; they are not multiplicity/selection adjusted.
+Simple OLS is not confounder-adjusted or cluster-robust regression. Study context can suppress inference.
+Never use declared subject, timestamp or post-outcome fields as predictors.
+
 Call save_result(n=len(paired), table=table, statistic=float(result.statistic),
  p_value=float(result.pvalue), effect=None, conclusion=..., limitations=[...],
  method=..., assumptions=[...], diagnostics=diagnostics).
@@ -204,7 +222,7 @@ class PythonPlanner:
             raise PlannerError("Generated Python exceeded 64 KB.")
         if len(answer["hypothesis"]) > 2000:
             raise PlannerError("Generated hypothesis is too long.")
-        names = {c["name"] for c in run.profile["schema"]}
+        names = {c["name"] for c in run.profile["schema"]} - run.study_context.excluded_columns
         if answer["x"] not in names or answer["y"] != run.target:
             raise PlannerError("Generated analysis referenced an invalid column or outcome.")
         return PythonProposal(answer["hypothesis"], answer["code"], answer["x"], answer["y"])

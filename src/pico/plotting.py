@@ -55,7 +55,29 @@ def generate_plot(e: Evidence) -> bytes:
 def charts_for(evidence: Evidence) -> list[tuple[str, bytes]]:
     if evidence.execution is not None:
         verification = evidence.review.verification if evidence.review else {}
-        if verification.get("status") == "matched":
+        if verification.get("status") == "matched" and "effect" in verification:
+            fig, ax = plt.subplots(figsize=(8, 3), layout="constrained")
+            effect = verification["effect"]
+            if verification.get("inference_eligible", False):
+                ax.errorbar(
+                    effect,
+                    0,
+                    xerr=[[effect - verification["ci_low"]], [verification["ci_high"] - effect]],
+                    fmt="o",
+                    color="#017ca8",
+                    capsize=5,
+                )
+                ax.set_title("Pointwise 95% interval; not selection or multiplicity adjusted")
+            else:
+                ax.plot(effect, 0, "o", color="#017ca8")
+                ax.set_title("Descriptive estimate only; inferential interval suppressed")
+            ax.set(xlabel=verification["effect_name"], yticks=[])
+            ax.axvline(0, color="#4d5b64", linestyle=":")
+            output = BytesIO()
+            fig.savefig(output, format="png", dpi=140)
+            plt.close(fig)
+            return [(f"{evidence.id}-checked-effect.png", output.getvalue())]
+        if verification.get("status") == "matched" and verification.get("recipe") in {"pearson_chi2", "fisher_exact"}:
             table = pd.DataFrame(verification["table"])
             counts = table.pivot(index="group", columns="category", values="count")
             proportions = counts.div(counts.sum(axis=1), axis=0)

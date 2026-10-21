@@ -7,12 +7,13 @@ import pandas as pd
 from pico.analysis import execute_analysis
 from pico.config import MAX_INVESTIGATIONS
 from pico.data import profile_dataset
-from pico.models import Evidence, Investigation
+from pico.models import Evidence, Investigation, StudyContext
 from pico.ollama import PlannerError
 from pico.planning import choose_target as choose_target
 from pico.planning import follow_up, ollama_choice, ranked_candidates
 from pico.ports import ProposalPlanner, PythonExecutor
 from pico.review import dataset_warnings, review_investigation
+from pico.study import study_warnings, validate_context
 
 EventCallback = Callable[[str, str], None]
 
@@ -40,7 +41,7 @@ def _compare_strata(run: Investigation, evidence: Evidence, emit: EventCallback)
 
 
 def _catalog_loop(df: pd.DataFrame, run: Investigation, emit: EventCallback) -> None:
-    pool = ranked_candidates(df, run.target)
+    pool = [h for h in ranked_candidates(df, run.target) if h.x not in run.study_context.excluded_columns]
     seen = set()
     emit("Plan", f"{len(pool)} eligible hypotheses; budget {run.budget} analyses.")
     for index in range(1, run.budget + 1):
@@ -66,7 +67,7 @@ def _catalog_loop(df: pd.DataFrame, run: Investigation, emit: EventCallback) -> 
         run.evidence.append(evidence)
         review_investigation(df, run)
         emit("Evaluate", f"{evidence.id}: {evidence.conclusion} n={evidence.n}.")
-        follow = follow_up(df, evidence)
+        follow = follow_up(df.drop(columns=list(run.study_context.excluded_columns)), evidence)
         if follow and follow.key not in seen and index < run.budget:
             pool.insert(0, follow)
             emit("Replan", follow.reason)
@@ -85,6 +86,7 @@ def investigate(
     engine: str = "catalog",
     executor: PythonExecutor | None = None,
     planner: ProposalPlanner | None = None,
+    study_context: StudyContext | None = None,
 ) -> Investigation:
     if type(budget) is not int or not 1 <= budget <= MAX_INVESTIGATIONS:
         raise ValueError(f"Investigation budget must be between 1 and {MAX_INVESTIGATIONS}.")
@@ -95,8 +97,12 @@ def investigate(
     if engine == "python" and not model:
         raise ValueError("Generated Python requires a local model.")
     mode = "Ollama / generated Python" if engine == "python" else "Ollama" if model else "Local adaptive planner"
-    run = Investigation(profile_dataset(df), target, question, mode, budget, engine=engine, model=model)
-    run.dataset_warnings = dataset_warnings(df, target)
+    context = study_context or StudyContext()
+    validate_context(df, target, context)
+    run = Investigation(
+        profile_dataset(df), target, question, mode, budget, engine=engine, model=model, study_context=context
+    )
+    run.dataset_warnings = dataset_warnings(df, target) + study_warnings(df, context)
 
     def emit(stage: str, message: str) -> None:
         _emit(run, on_event, stage, message)

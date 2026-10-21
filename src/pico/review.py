@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 
 from pico.models import Evidence, FindingReview, Investigation
-from pico.verification import verify_contingency
+from pico.study import study_warnings
+from pico.verification import verify_analysis
 
 ADAPTIVE_CAVEAT = (
     "Holm adjustments describe the reported test family only. Adaptive selection, "
@@ -154,7 +155,11 @@ def _review_one(df: pd.DataFrame, run: Investigation, evidence: Evidence, review
     mentioned = _mentioned_columns(evidence, set(df.columns))
     for warning in run.dataset_warnings:
         if warning["column"] in mentioned or warning["column"] is None or warning["code"] == "imbalance":
-            blocking = warning["code"] in {"identifier", "target_copy", "target_proxy"}
+            blocking = warning.get("blocking", False) or warning["code"] in {
+                "identifier",
+                "target_copy",
+                "target_proxy",
+            }
             issue(warning["code"], warning["message"], "blocking" if blocking else "warning")
     if evidence.execution:
         verification = review.verification
@@ -242,15 +247,29 @@ def _review_one(df: pd.DataFrame, run: Investigation, evidence: Evidence, review
             f"raw p={evidence.p_value:.4g}, Holm-adjusted p={adjusted}. "
             "Exploratory, unadjusted comparison; matching arithmetic does not establish study validity."
         )
+        verification = review.verification
+        verification["inference_eligible"] = evidence.p_value_reliable
+        if "effect" in verification:
+            review.numerical_summary += f" {verification['effect_name']}={verification['effect']:.4g}."
+            if evidence.p_value_reliable:
+                review.numerical_summary += (
+                    f" Pointwise 95% CI [{verification['ci_low']:.4g}, {verification['ci_high']:.4g}]; "
+                    "not adjusted for selection or multiple testing."
+                )
+            else:
+                review.numerical_summary += " Inferential interval suppressed because study/test assumptions failed."
         if review.status != "unsupported":
             evidence.conclusion = review.numerical_summary
 
 
 def review_investigation(df: pd.DataFrame, run: Investigation) -> None:
     """Recompute after every finding so subsequent planning sees current critiques."""
-    run.dataset_warnings = dataset_warnings(df, run.target)
+    run.dataset_warnings = dataset_warnings(df, run.target) + study_warnings(df, run.study_context)
     tests = []
     for evidence in run.evidence:
+        mentioned = _mentioned_columns(evidence, set(df.columns))
+        if any(w.get("blocking") and (w["column"] is None or w["column"] in mentioned) for w in run.dataset_warnings):
+            evidence.p_value_reliable = False
         if evidence.execution:
             diagnostics = evidence.diagnostics
             failed_fit = diagnostics.get("converged") is False or diagnostics.get("fit_converged") is False
@@ -266,7 +285,7 @@ def review_investigation(df: pd.DataFrame, run: Investigation) -> None:
         original = evidence.review.original_conclusion if evidence.review else evidence.conclusion
         evidence.review = FindingReview(original)
         if evidence.execution:
-            evidence.review.verification = verify_contingency(df, evidence)
+            evidence.review.verification = verify_analysis(df, evidence)
             if evidence.review.verification["status"] != "matched" and evidence.p_value is not None:
                 evidence.p_value_reliable = False
         tests.extend((evidence, label, p) for label, p in _reported_tests(evidence))

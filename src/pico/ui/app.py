@@ -8,7 +8,8 @@ from pico.agent import investigate
 from pico.data import demo_dataset, load_csv, profile_dataset
 from pico.planning import choose_target
 from pico.report import export_bundle
-from pico.ui.components import apply_style, dataset_health, results, sidebar
+from pico.study import validate_context
+from pico.ui.components import apply_style, dataset_health, results, sidebar, study_controls
 from pico.ui.state import clear_results, select_dataset, settings_signature
 
 
@@ -47,8 +48,15 @@ def main() -> None:
         )
     if options.engine == "catalog" and options.model is None and question:
         st.caption("Local rules use the selected outcome. Choose Ollama for question-aware hypothesis selection.")
-    signature = settings_signature(target, question, options.budget, options.model, options.engine)
-    if st.button("Start investigation", type="primary", disabled=df[target].nunique() < 2):
+    context = study_controls(list(df.columns), target)
+    context_error = None
+    try:
+        validate_context(df, target, context)
+    except ValueError as exc:
+        context_error = str(exc)
+        st.error(context_error)
+    signature = settings_signature(target, question, options.budget, options.model, options.engine, context)
+    if st.button("Start investigation", type="primary", disabled=df[target].nunique() < 2 or context_error is not None):
         clear_results(st.session_state)
         with st.status("Pico is investigating…", expanded=True) as status:
 
@@ -57,7 +65,14 @@ def main() -> None:
 
             try:
                 run = investigate(
-                    df, target, question, options.budget, options.model, on_event=update, engine=options.engine
+                    df,
+                    target,
+                    question,
+                    options.budget,
+                    options.model,
+                    on_event=update,
+                    engine=options.engine,
+                    study_context=context,
                 )
                 bundle = export_bundle(run)
             except Exception as exc:
