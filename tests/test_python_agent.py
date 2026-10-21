@@ -87,6 +87,28 @@ def test_python_loop_does_not_repeat_successful_source():
     assert any(event["stage"] == "Plan revision" for event in run.activity)
 
 
+def test_invalid_proposal_is_revised_within_budget_without_execution():
+    class RevisingPlanner(FakePlanner):
+        def propose(self, run):
+            if not run.activity or not any(e["stage"] == "Planner error" for e in run.activity):
+                raise PlannerError("Generated analysis referenced an invalid column or outcome.")
+            return super().propose(run)
+
+    executor = FakeExecutor()
+    run = investigate(
+        demo_dataset(),
+        "churn",
+        budget=2,
+        model="test",
+        engine="python",
+        executor=executor,
+        planner=RevisingPlanner(["corrected source"]),
+    )
+    assert executor.calls == ["corrected source"]
+    assert len(run.evidence) == 1
+    assert any("Invalid proposal" in e["message"] for e in run.activity)
+
+
 def test_missing_sandbox_never_generates_or_executes_code():
     class Unavailable(FakeExecutor):
         def check_available(self):

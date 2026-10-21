@@ -1,0 +1,297 @@
+{
+  "summary": {
+    "fault_injection": false,
+    "git_sha": "16ac27460b75f54aab5fb4542214c998c7748142",
+    "model_responses": [
+      {
+        "model": "qwen2.5-coder:7b",
+        "done_reason": "stop",
+        "prompt_eval_count": 1527,
+        "eval_count": 356,
+        "total_duration": 47932031667,
+        "load_duration": 1859583,
+        "eval_duration": 47411258000
+      },
+      {
+        "model": "qwen2.5-coder:7b",
+        "done_reason": "stop",
+        "prompt_eval_count": 2108,
+        "eval_count": 409,
+        "total_duration": 70270395125,
+        "load_duration": 3560500,
+        "eval_duration": 60159131000
+      },
+      {
+        "model": "qwen2.5-coder:7b",
+        "done_reason": "stop",
+        "prompt_eval_count": 2568,
+        "eval_count": 308,
+        "total_duration": 55656002334,
+        "load_duration": 4229792,
+        "eval_duration": 40634898000
+      }
+    ],
+    "question": "Compare churn rates across income quartiles. Use the executed findings to choose a follow-up analysis involving purchase frequency; report only associations.",
+    "model": "qwen2.5-coder:7b",
+    "model_digest": "dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364",
+    "elapsed_seconds": 179.37,
+    "engine": "python",
+    "attempts": 3,
+    "findings": 3,
+    "stop_reason": "Reached the 3-analysis budget.",
+    "executions": [
+      {
+        "id": "A01",
+        "status": "ok",
+        "error": null,
+        "duration": 1.625,
+        "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+        "charts": []
+      },
+      {
+        "id": "A02",
+        "status": "ok",
+        "error": null,
+        "duration": 1.915,
+        "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+        "charts": []
+      },
+      {
+        "id": "A03",
+        "status": "ok",
+        "error": null,
+        "duration": 1.63,
+        "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+        "charts": []
+      }
+    ],
+    "conclusions": [
+      "Income quartiles are associated with churn rates.",
+      "Purchase frequency quartiles are associated with churn rates.",
+      "Age groups are associated with churn rates."
+    ],
+    "activity": [
+      {
+        "stage": "Profile",
+        "message": "Inspected 2,400 rows and 5 columns."
+      },
+      {
+        "stage": "Data check",
+        "message": "7 duplicate rows may violate independence."
+      },
+      {
+        "stage": "Plan",
+        "message": "Generate and execute up to 3 Python investigations in disposable containers."
+      },
+      {
+        "stage": "Investigate",
+        "message": "Income quartiles are associated with churn rates."
+      },
+      {
+        "stage": "Evaluate",
+        "message": "A01: Income quartiles are associated with churn rates. n=2235."
+      },
+      {
+        "stage": "Replan",
+        "message": "Use the executed results to decide the next investigation."
+      },
+      {
+        "stage": "Investigate",
+        "message": "Compare churn rates across purchase frequency quartiles."
+      },
+      {
+        "stage": "Evaluate",
+        "message": "A02: Purchase frequency quartiles are associated with churn rates. n=2235."
+      },
+      {
+        "stage": "Replan",
+        "message": "Use the executed results to decide the next investigation."
+      },
+      {
+        "stage": "Investigate",
+        "message": "Compare churn rates across age groups."
+      },
+      {
+        "stage": "Evaluate",
+        "message": "A03: Age groups are associated with churn rates. n=2235."
+      },
+      {
+        "stage": "Statistical review",
+        "message": "Holm adjustment across 3 reported tests. Results remain exploratory under adaptive selection."
+      },
+      {
+        "stage": "Complete",
+        "message": "Reached the 3-analysis budget."
+      }
+    ]
+  },
+  "numerical_checks": [
+    {
+      "id": "A01",
+      "reported_n": 2235,
+      "table_n": 2235,
+      "reported_p": 6.331130815873833e-16,
+      "recomputed_p": 6.331130815873833e-16,
+      "p_matches": true
+    },
+    {
+      "id": "A02",
+      "reported_n": 2235,
+      "table_n": 2235,
+      "reported_p": 1.2442296065014115e-46,
+      "recomputed_p": 1.2442296065014115e-46,
+      "p_matches": true
+    },
+    {
+      "id": "A03",
+      "reported_n": 2235,
+      "table_n": 2235,
+      "reported_p": 0.9900930133474232,
+      "recomputed_p": 0.9900930133474232,
+      "p_matches": true
+    }
+  ],
+  "posthoc_review": [
+    {
+      "id": "A01",
+      "conclusion": "Income quartiles are associated with churn rates.",
+      "review": {
+        "original_conclusion": "Income quartiles are associated with churn rates.",
+        "status": "caution",
+        "adjusted_p_value": 1.2662261631747665e-15,
+        "method": "Holm",
+        "family_size": 3,
+        "adjusted_tests": [
+          {
+            "test": "primary",
+            "raw_p_value": 6.331130815873833e-16,
+            "adjusted_p_value": 1.2662261631747665e-15
+          }
+        ],
+        "issues": [
+          {
+            "code": "adaptive_selection",
+            "message": "Holm adjustments describe the reported test family only. Adaptive selection, unreported tests, and invalid assumptions can still invalidate inference; use independent validation.",
+            "severity": "warning"
+          },
+          {
+            "code": "independence",
+            "message": "Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.",
+            "severity": "warning"
+          },
+          {
+            "code": "duplicates",
+            "message": "7 duplicate rows may violate independence.",
+            "severity": "warning"
+          },
+          {
+            "code": "generated_method",
+            "message": "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
+            "severity": "warning"
+          },
+          {
+            "code": "missingness",
+            "message": "Used 2235/2400 observations; missingness/subsetting can bias the result.",
+            "severity": "warning"
+          }
+        ]
+      }
+    },
+    {
+      "id": "A02",
+      "conclusion": "Purchase frequency quartiles are associated with churn rates.",
+      "review": {
+        "original_conclusion": "Purchase frequency quartiles are associated with churn rates.",
+        "status": "caution",
+        "adjusted_p_value": 3.7326888195042345e-46,
+        "method": "Holm",
+        "family_size": 3,
+        "adjusted_tests": [
+          {
+            "test": "primary",
+            "raw_p_value": 1.2442296065014115e-46,
+            "adjusted_p_value": 3.7326888195042345e-46
+          }
+        ],
+        "issues": [
+          {
+            "code": "adaptive_selection",
+            "message": "Holm adjustments describe the reported test family only. Adaptive selection, unreported tests, and invalid assumptions can still invalidate inference; use independent validation.",
+            "severity": "warning"
+          },
+          {
+            "code": "independence",
+            "message": "Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.",
+            "severity": "warning"
+          },
+          {
+            "code": "duplicates",
+            "message": "7 duplicate rows may violate independence.",
+            "severity": "warning"
+          },
+          {
+            "code": "generated_method",
+            "message": "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
+            "severity": "warning"
+          },
+          {
+            "code": "missingness",
+            "message": "Used 2235/2400 observations; missingness/subsetting can bias the result.",
+            "severity": "warning"
+          }
+        ]
+      }
+    },
+    {
+      "id": "A03",
+      "conclusion": "A03 produced numerical results, but its interpretation requires review; see the evidence table and flagged original conclusion.",
+      "review": {
+        "original_conclusion": "Age groups are associated with churn rates.",
+        "status": "unsupported",
+        "adjusted_p_value": 0.9900930133474232,
+        "method": "Holm",
+        "family_size": 3,
+        "adjusted_tests": [
+          {
+            "test": "primary",
+            "raw_p_value": 0.9900930133474232,
+            "adjusted_p_value": 0.9900930133474232
+          }
+        ],
+        "issues": [
+          {
+            "code": "adaptive_selection",
+            "message": "Holm adjustments describe the reported test family only. Adaptive selection, unreported tests, and invalid assumptions can still invalidate inference; use independent validation.",
+            "severity": "warning"
+          },
+          {
+            "code": "independence",
+            "message": "Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.",
+            "severity": "warning"
+          },
+          {
+            "code": "duplicates",
+            "message": "7 duplicate rows may violate independence.",
+            "severity": "warning"
+          },
+          {
+            "code": "generated_method",
+            "message": "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
+            "severity": "warning"
+          },
+          {
+            "code": "missingness",
+            "message": "Used 2235/2400 observations; missingness/subsetting can bias the result.",
+            "severity": "warning"
+          },
+          {
+            "code": "association_claim",
+            "message": "The positive association claim is not supported by the adjusted primary p-value. Report the observed estimate and uncertainty instead.",
+            "severity": "blocking"
+          }
+        ]
+      }
+    }
+  ],
+  "review_note": "Original run used commit 16ac274. Posthoc review uses the added positive-association guard; original model responses are preserved."
+}

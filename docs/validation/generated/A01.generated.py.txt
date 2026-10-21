@@ -1,0 +1,32 @@
+import pandas as pd
+from scipy.stats import chi2_contingency
+from pico_tools import load_dataset, save_result
+
+# Load the dataset
+df = load_dataset()
+
+# Handle missing values by dropping rows with missing income
+df = df.dropna(subset=['income'])
+
+# Create income quartiles
+df['income_quartile'] = pd.qcut(df['income'], q=4, labels=False)
+
+# Create a contingency table
+contingency_table = pd.crosstab(df['income_quartile'], df['churn'])
+
+# Perform chi-square test
+chi2, p_value, dof, expected = chi2_contingency(contingency_table)
+
+# Prepare the result
+n = len(df)
+conclusion = "Income quartiles are associated with churn rates." if p_value < 0.05 else "No significant association between income quartiles and churn rates."
+limitations = ["Missing values in income column were dropped."]
+table = contingency_table.to_dict(orient='records')
+statistic = chi2
+effect = None  # Not applicable for chi-square test
+method = "Chi-square test"
+assumptions = ["Independence of observations", "Expected cell counts >= 5"]
+diagnostics = {"min_expected_count": float(expected.min())}
+
+# Save the result
+save_result(n=n, conclusion=conclusion, limitations=limitations, table=table, statistic=statistic, p_value=p_value, effect=effect, method=method, assumptions=assumptions, diagnostics=diagnostics)

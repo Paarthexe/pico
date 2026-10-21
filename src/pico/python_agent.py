@@ -67,7 +67,13 @@ def python_loop(
             proposal = planner.propose(run)
         except PlannerError as exc:
             emit("Planner error", str(exc))
-            run.stop_reason = "The model could not produce a valid Python investigation."
+            emit(
+                "Plan revision",
+                f"Invalid proposal: {exc} Use an original dataset column for x and the configured target for y.",
+            )
+            if index < run.budget:
+                continue
+            run.stop_reason = "The model could not produce a valid Python investigation within the remaining budget."
             return
         digest = hashlib.sha256(proposal.code.encode()).hexdigest()
         if digest in successful_sources:

@@ -1,0 +1,33 @@
+from pico_tools import load_dataset, save_result
+import pandas as pd
+import numpy as np
+from scipy.stats import chi2_contingency
+
+# Load dataset
+df = load_dataset()
+
+# Handle missing values
+df.dropna(subset=['income', 'purchases'], inplace=True)
+
+# Create age quartiles
+df['age_group'] = pd.qcut(df['age'], q=4, labels=False)
+
+# Create contingency table
+contingency_table = pd.crosstab(df['age_group'], df['churn'])
+
+# Perform chi-square test
+chi2, p, dof, expected = chi2_contingency(contingency_table)
+
+# Save result
+save_result(
+    n=len(df),
+    conclusion="Age groups are associated with churn rates.",
+    limitations=["Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.", "7 duplicate rows may violate independence.", "Used 2228/2235 observations; missingness/subsetting can bias the result."],
+    table=contingency_table.to_dict(orient='records'),
+    statistic=chi2,
+    p_value=p,
+    effect=None,
+    method="Chi-square test",
+    assumptions=["Independence", "Exchangeability"],
+    diagnostics={"min_expected_count": expected.min()}
+)

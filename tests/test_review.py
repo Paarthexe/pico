@@ -140,3 +140,13 @@ def test_univariate_result_cannot_explain_confounding():
     run = run_with(evidence)
     review_investigation(frame(), run)
     assert any(issue["code"] == "confounding_claim" for issue in evidence.review.issues)
+
+
+def test_live_discovered_positive_claim_with_p_099_is_not_endorsed():
+    evidence = finding(p=0.9900930133474232, conclusion="Age groups are associated with churn rates.")
+    run = run_with(evidence)
+    review_investigation(frame(), run)
+    assert evidence.review.status == "unsupported"
+    assert any(issue["code"] == "association_claim" for issue in evidence.review.issues)
+    assert evidence.review.original_conclusion == "Age groups are associated with churn rates."
+    assert "requires review" in evidence.conclusion

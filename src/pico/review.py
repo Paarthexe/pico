@@ -164,6 +164,20 @@ def _review_one(df: pd.DataFrame, run: Investigation, evidence: Evidence, review
                 "The significance claim is not supported by a reliable primary p-value below 0.05 after adjustment.",
                 "blocking",
             )
+    if (
+        evidence.execution
+        and review.adjusted_p_value is not None
+        and review.adjusted_p_value >= 0.05
+        and _asserts(
+            original,
+            r"\b(?:is|are|was|were)\s+(?:(?:positively|negatively|strongly|weakly)\s+)?(?:associated|correlated|related)\b",
+        )
+    ):
+        issue(
+            "association_claim",
+            "The positive association claim is not supported by the adjusted primary p-value. Report the observed estimate and uncertainty instead.",
+            "blocking",
+        )
     if re.search(r"\bexplain", original.lower()) and "association between" in original.lower() and evidence.execution:
         if not any(word in evidence.method.lower() for word in ["regression", "stratif", "adjusted"]):
             issue(
