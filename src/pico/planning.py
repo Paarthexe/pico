@@ -8,6 +8,7 @@ from pico.config import MAX_CODE_BYTES
 from pico.models import Evidence, Hypothesis, Investigation, PythonProposal
 from pico.ollama import OllamaClient, PlannerError
 from pico.ports import ModelClient
+from pico.review import feature_warnings
 
 
 def choose_target(df: pd.DataFrame, question: str = "") -> str:
@@ -20,9 +21,10 @@ def choose_target(df: pd.DataFrame, question: str = "") -> str:
 def candidates(df: pd.DataFrame, target: str) -> list[Hypothesis]:
     numeric_target = pd.api.types.is_numeric_dtype(df[target]) and df[target].nunique() > 10
     result = []
+    excluded = {w["column"] for w in feature_warnings(df, target) if w["code"] in {"identifier", "target_copy"}}
     for name in df.columns:
         s = df[name]
-        if name == target:
+        if name == target or name in excluded:
             continue
         if s.isna().any() and s.notna().any() and not numeric_target:
             result.append(
@@ -63,8 +65,18 @@ def aggregate_context(run: Investigation) -> dict:
         question=run.question,
         target=run.target,
         profile=run.profile,
+        dataset_warnings=run.dataset_warnings,
+        multiplicity=run.multiplicity,
         evidence=[
-            dict(id=e.id, hypothesis=e.hypothesis, conclusion=e.conclusion, effect=e.effect, p=e.p_value, n=e.n)
+            dict(
+                id=e.id,
+                hypothesis=e.hypothesis,
+                conclusion=e.conclusion,
+                effect=e.effect,
+                p=e.p_value,
+                n=e.n,
+                review=asdict(e.review) if e.review else None,
+            )
             for e in run.evidence
         ],
     )
@@ -117,6 +129,13 @@ You may invent an analysis beyond fixed statistical tools, and revise it after f
 Return JSON: {"hypothesis": string, "x": existing column, "y": target column, "code": Python source}.
 Do not repeat successful code. No causal claims. Report uncertainty, sparse groups, missingness,
 multiple testing, and leakage when relevant. Do not fabricate measurements.
+Run ONE focused analysis per attempt. Prefer concise code (under 80 lines), not a whole EDA pipeline.
+Use actual category labels in profile.schema.categories; never guess category values or numeric encodings.
+Handle missing values AFTER any transformation. Never mix training/test encodings or add a constant to only one split.
+If a prior attempt failed, fix the FIRST traceback error before adding any new analyses.
+Use table.to_dict(orient='records'), a nonempty limitations list, and native Python floats/ints for JSON.
+Do not run numeric tests directly on string outcomes: explicitly encode the observed classes.
+Read the statistical critic's review and revise unsupported interpretations.
 
 Execution contract:
 - Python 3.12, pandas, numpy, scipy, matplotlib, seaborn, statsmodels, scikit-learn are installed.
@@ -127,6 +146,8 @@ Execution contract:
   "limitations": [strings], "table": [objects of scalar values],
   "statistic": finite number or null, "p_value": number from 0 to 1 or null,
   "effect": finite number or null}.
+- Also report "method": string, "assumptions": [strings], and "diagnostics": scalar-valued object.
+  For fitted models report convergence and separation/conditioning checks, or say explicitly what was not checked.
 - Include concrete numerical evidence in the table. Max 1000 rows, 20 fields each, 256 KB JSON.
 - stdout/stderr are captured; they are not a substitute for result.json.
 - One CPU, 768 MB RAM, 30 CPU seconds, 45 seconds wall time, limited processes and files.

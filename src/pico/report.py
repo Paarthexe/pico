@@ -41,6 +41,17 @@ def markdown_report(run: Investigation) -> str:
     ]
     if not run.evidence:
         lines += ["No eligible analysis produced evidence.", ""]
+    if run.multiplicity:
+        lines += [
+            "## Statistical review",
+            "",
+            f"Holm adjustment across {run.multiplicity['family_size']} reported tests.",
+            run.multiplicity["scope"],
+            run.multiplicity["limitation"],
+            "",
+        ]
+    if run.dataset_warnings:
+        lines += ["## Data quality and possible leakage", "", *[f"- {w['message']}" for w in run.dataset_warnings], ""]
     for e in run.evidence:
         lines += [
             f"## {e.id}: {e.hypothesis['x']} and {e.hypothesis['y']}",
@@ -57,6 +68,19 @@ def markdown_report(run: Investigation) -> str:
                 f"Worker image: `{e.execution.image}`.",
                 "",
             ]
+        if e.method:
+            lines += [f"Method: {e.method}", ""]
+        if e.review:
+            lines += [
+                f"Review status: {e.review.status}.",
+                f"Holm-adjusted primary p-value: {e.review.adjusted_p_value:.4g}."
+                if e.review.adjusted_p_value is not None
+                else "No adjusted primary p-value.",
+                "",
+            ]
+            if e.review.original_conclusion != e.conclusion:
+                lines += ["Original interpretation (flagged, not endorsed):", e.review.original_conclusion, ""]
+            lines += [*[f"- {issue['message']}" for issue in e.review.issues], ""]
         for name, _ in charts_for(e):
             lines += [f"![{e.id} analysis chart](charts/{name})", ""]
         lines += [

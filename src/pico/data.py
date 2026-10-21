@@ -54,6 +54,8 @@ def profile_dataset(df: pd.DataFrame) -> dict:
             row.update(
                 most_frequent=str(counts.index[0]), largest_class_percent=float(counts.iloc[0] / s.notna().sum() * 100)
             )
+            if unique <= 20:
+                row["categories"] = [{"value": str(value), "count": int(count)} for value, count in counts.items()]
         columns.append(row)
     return dict(
         rows=len(df),

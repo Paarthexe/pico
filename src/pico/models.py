@@ -44,6 +44,17 @@ class ExecutionRecord:
 
 
 @dataclass
+class FindingReview:
+    original_conclusion: str
+    status: str = "caution"
+    adjusted_p_value: float | None = None
+    method: str = "Holm"
+    family_size: int = 0
+    adjusted_tests: list[dict] = field(default_factory=list)
+    issues: list[dict] = field(default_factory=list)
+
+
+@dataclass
 class Evidence:
     id: str
     hypothesis: dict
@@ -57,6 +68,11 @@ class Evidence:
     code: str
     error: str | None = None
     execution: ExecutionRecord | None = None
+    method: str = ""
+    assumptions: list[str] = field(default_factory=list)
+    diagnostics: dict = field(default_factory=dict)
+    p_value_reliable: bool = True
+    review: FindingReview | None = None
 
 
 @dataclass(frozen=True)
@@ -80,3 +96,5 @@ class Investigation:
     executions: list[ExecutionRecord] = field(default_factory=list)
     engine: str = "catalog"
     model: str | None = None
+    dataset_warnings: list[dict] = field(default_factory=list)
+    multiplicity: dict = field(default_factory=dict)

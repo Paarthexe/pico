@@ -12,6 +12,7 @@ from pico.ollama import PlannerError
 from pico.planning import choose_target as choose_target
 from pico.planning import follow_up, ollama_choice, ranked_candidates
 from pico.ports import ProposalPlanner, PythonExecutor
+from pico.review import dataset_warnings, review_investigation
 
 EventCallback = Callable[[str, str], None]
 
@@ -63,6 +64,7 @@ def _catalog_loop(df: pd.DataFrame, run: Investigation, emit: EventCallback) -> 
             emit("Analysis skipped", f"{hypothesis.x} / {hypothesis.y}: {exc}")
             continue
         run.evidence.append(evidence)
+        review_investigation(df, run)
         emit("Evaluate", f"{evidence.id}: {evidence.conclusion} n={evidence.n}.")
         follow = follow_up(df, evidence)
         if follow and follow.key not in seen and index < run.budget:
@@ -94,11 +96,14 @@ def investigate(
         raise ValueError("Generated Python requires a local model.")
     mode = "Ollama / generated Python" if engine == "python" else "Ollama" if model else "Local adaptive planner"
     run = Investigation(profile_dataset(df), target, question, mode, budget, engine=engine, model=model)
+    run.dataset_warnings = dataset_warnings(df, target)
 
     def emit(stage: str, message: str) -> None:
         _emit(run, on_event, stage, message)
 
     emit("Profile", f"Inspected {len(df):,} rows and {len(df.columns)} columns.")
+    for warning in run.dataset_warnings:
+        emit("Data check", warning["message"])
     if engine == "python":
         # Import lazily: catalog analysis does not require a container runtime.
         from pico.python_agent import python_loop
@@ -106,5 +111,10 @@ def investigate(
         python_loop(df, run, emit, executor=executor, planner=planner)
     else:
         _catalog_loop(df, run, emit)
+    review_investigation(df, run)
+    emit(
+        "Statistical review",
+        f"Holm adjustment across {run.multiplicity['family_size']} reported tests. Results remain exploratory under adaptive selection.",
+    )
     emit("Complete", run.stop_reason)
     return run

@@ -1,5 +1,6 @@
 """Focused view functions. Controls and evidence rendering do not run investigations."""
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -51,7 +52,11 @@ def sidebar() -> Options:
             )
         else:
             use_model = st.selectbox("Planner", ["Local adaptive rules", "Ollama local model"]) == "Ollama local model"
-        model = st.text_input("Ollama model", value="qwen3:8b") if use_model else None
+        model = (
+            st.text_input("Ollama model", value=os.environ.get("PICO_OLLAMA_MODEL", "qwen2.5-coder:3b"))
+            if use_model
+            else None
+        )
         if use_model:
             st.caption(
                 "Requires Ollama running locally. Schema, aggregate findings, and generated execution errors are sent to localhost."
@@ -86,6 +91,30 @@ def evidence_card(evidence: Evidence) -> None:
             f"{evidence.n:,} usable observations · "
             + (f"Raw p = {evidence.p_value:.4g}" if evidence.p_value is not None else "No pooled p-value")
         )
+        if evidence.method:
+            st.caption(evidence.method)
+        if evidence.review:
+            review = evidence.review
+            if review.adjusted_p_value is not None:
+                st.caption(
+                    f"Holm-adjusted p = {review.adjusted_p_value:.4g} · {review.family_size} reported tests · exploratory"
+                )
+            if review.status == "unsupported":
+                st.error(
+                    "Interpretation flagged by the statistical review. Inspect the numerical evidence and review notes."
+                )
+            with st.expander("Statistical review and assumptions"):
+                if review.original_conclusion != evidence.conclusion:
+                    st.caption("Original interpretation, flagged as unsupported:")
+                    st.text(review.original_conclusion)
+                for issue in review.issues:
+                    st.write(f"• {issue['message']}")
+                for assumption in evidence.assumptions:
+                    st.write(f"Assumption: {assumption}")
+                if evidence.diagnostics:
+                    st.json(evidence.diagnostics)
+                if review.adjusted_tests:
+                    st.dataframe(pd.DataFrame(review.adjusted_tests), hide_index=True, width="stretch")
         for name, data in charts_for(evidence):
             st.image(data, caption=name if evidence.execution else None)
         with st.expander("Evidence, limitations, and source code"):
@@ -109,6 +138,14 @@ def results(run: Investigation, bundle: bytes) -> None:
         st.warning(
             "Exploratory associations only. Adaptive selection, multiple comparisons, missingness, and possible leakage limit interpretation."
         )
+        if run.multiplicity:
+            st.caption(
+                f"Holm adjustment: {run.multiplicity['family_size']} reported tests. {run.multiplicity['limitation']}"
+            )
+        if run.dataset_warnings:
+            with st.expander("Data quality and possible leakage"):
+                for warning in run.dataset_warnings:
+                    st.write(f"• {warning['message']}")
         if not run.evidence:
             st.info(
                 "No analysis produced usable evidence. Inspect the investigation trail for execution errors or choose another outcome."

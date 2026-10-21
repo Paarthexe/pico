@@ -14,7 +14,7 @@ MAX_PROTOCOL_BYTES = 7 * 1024 * 1024
 SANDBOX_IMAGE = "pico-sandbox:1"
 PROTOCOL_VERSION = 1
 EXPLORATORY_CAVEAT = "Exploratory association; this does not establish causation."
-MULTIPLE_TESTING_CAVEAT = "P-values are unadjusted; account for the full investigation when interpreting them."
+MULTIPLE_TESTING_CAVEAT = "Raw p-values require investigation-wide adjustment; even adjusted values remain exploratory under adaptive selection."
 
 
 @dataclass(frozen=True)

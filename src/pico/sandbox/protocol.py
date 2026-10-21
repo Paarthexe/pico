@@ -77,6 +77,22 @@ def validate_result(value: object, dataset_rows: int) -> dict:
             elif not _finite(cell):
                 raise ProtocolError("Evidence table values must be finite JSON scalars.")
     result = dict(n=n, conclusion=conclusion, limitations=limitations, table=table)
+    method = _text(value.get("method", ""), "method", 1000)
+    assumptions = value.get("assumptions", [])
+    if not isinstance(assumptions, list) or len(assumptions) > 20:
+        raise ProtocolError("Invalid assumptions list.")
+    for assumption in assumptions:
+        _text(assumption, "assumption", 2000)
+    diagnostics = value.get("diagnostics", {})
+    if not isinstance(diagnostics, dict) or len(diagnostics) > 20:
+        raise ProtocolError("Invalid diagnostics object.")
+    for key, item in diagnostics.items():
+        _text(key, "diagnostic name", 200)
+        if isinstance(item, str):
+            _text(item, "diagnostic value", 2000)
+        elif item is not None and type(item) is not bool and not _finite(item):
+            raise ProtocolError("Diagnostics must contain finite scalar values.")
+    result.update(method=method, assumptions=assumptions, diagnostics=diagnostics)
     for field in ["statistic", "p_value", "effect"]:
         number = value.get(field)
         if number is not None:

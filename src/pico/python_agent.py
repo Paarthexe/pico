@@ -11,6 +11,7 @@ from pico.models import Evidence, ExecutionRecord, Hypothesis, Investigation, Py
 from pico.ollama import PlannerError
 from pico.planning import PythonPlanner
 from pico.ports import ProposalPlanner, PythonExecutor
+from pico.review import review_investigation
 from pico.sandbox import DockerSandbox
 from pico.sandbox.protocol import validate_result
 
@@ -40,6 +41,9 @@ def evidence_from_execution(record: ExecutionRecord, proposal: PythonProposal, d
         result["table"],
         proposal.code,
         execution=record,
+        method=result.get("method", ""),
+        assumptions=result.get("assumptions", []),
+        diagnostics=result.get("diagnostics", {}),
     )
 
 
@@ -80,6 +84,7 @@ def python_loop(
             continue
         evidence = evidence_from_execution(record, proposal, len(df))
         run.evidence.append(evidence)
+        review_investigation(df, run)
         successful_sources.add(digest)
         emit("Evaluate", f"{evidence.id}: {evidence.conclusion} n={evidence.n}.")
         if index < run.budget:

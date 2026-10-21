@@ -1,7 +1,7 @@
 """Trusted catalog executor. Each statistical method has one focused implementation."""
 
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 import numpy as np
 import pandas as pd
@@ -20,6 +20,9 @@ class _Summary:
     effect: float | None
     conclusion: str
     table: list[dict]
+    method: str = ""
+    diagnostics: dict = field(default_factory=dict)
+    reliable: bool = True
 
 
 def validate(df: pd.DataFrame, h: Hypothesis) -> None:
@@ -52,6 +55,30 @@ def _correlation(df: pd.DataFrame, h: Hypothesis, limitations: list[str]) -> _Su
         raise ValueError("Correlation requires at least 8 complete rows and nonconstant columns.")
     result = stats.spearmanr(d[h.x], d[h.y])
     statistic, p = float(result.statistic), float(result.pvalue)
+    method = "Spearman correlation (asymptotic p-value)"
+    if len(d) <= 500:
+        x = stats.rankdata(d[h.x])
+        y = stats.rankdata(d[h.y])
+        x, y = x - x.mean(), y - y.mean()
+        denominator = np.linalg.norm(x) * np.linalg.norm(y)
+
+        def rank_statistic(sample, axis=-1):
+            return np.sum(sample * y, axis=axis) / denominator
+
+        permutation = stats.permutation_test(
+            (x,),
+            rank_statistic,
+            permutation_type="pairings",
+            vectorized=True,
+            n_resamples=1999,
+            batch=256,
+            random_state=71,
+        )
+        p = float(permutation.pvalue)
+        method = "Spearman correlation (1999-resample pairing permutation p-value)"
+        limitations.append(
+            "Permutation p-value has finite resampling resolution; exchangeable observations are assumed."
+        )
     return _Summary(
         len(d),
         statistic,
@@ -59,6 +86,7 @@ def _correlation(df: pd.DataFrame, h: Hypothesis, limitations: list[str]) -> _Su
         abs(statistic),
         f"Spearman correlation between {h.x} and {h.y}: {statistic:.3f}.",
         d.head(1000).to_dict("records"),
+        method=method,
     )
 
 
@@ -79,7 +107,14 @@ def _numeric_groups(df: pd.DataFrame, h: Hypothesis, limitations: list[str]) -> 
         .to_dict("records")
     )
     return _Summary(
-        len(d), statistic, p, effect, f"Compared {h.y} across {len(groups)} {h.x} groups using Kruskal–Wallis.", table
+        len(d),
+        statistic,
+        p,
+        effect,
+        f"Compared {h.y} across {len(groups)} {h.x} groups using Kruskal–Wallis.",
+        table,
+        method="Kruskal–Wallis",
+        diagnostics={"minimum_group_size": min(map(len, groups)), "groups": len(groups)},
     )
 
 
@@ -89,21 +124,32 @@ def _categorical(df: pd.DataFrame, h: Hypothesis, limitations: list[str]) -> _Su
     d = pd.DataFrame({"outcome": df[h.y], "group": groups, "stratum": strata}).dropna()
     tables, effects, counts = [], [], []
     statistic = p = None
+    method, reliable = "Pearson chi-square", True
     for label, subset in d.groupby("stratum", observed=True):
         ct = pd.crosstab(subset["group"], subset["outcome"])
         if min(ct.shape) < 2 or ct.values.sum() < 10:
             continue
         chi, pv, _, expected = stats.chi2_contingency(ct)
-        if (expected < 5).any():
+        sparse = (expected < 5).any()
+        if sparse:
             limitations.append(f"Sparse expected counts in {label}; chi-square approximation may be unreliable.")
         effects.append(math.sqrt(chi / (ct.values.sum() * (min(ct.shape) - 1))))
         counts.append(int(ct.values.sum()))
         tables.append((label, ct))
         if h.kind != "stratified":
             statistic, p = float(chi), float(pv)
+            if sparse and ct.shape == (2, 2):
+                p = float(stats.fisher_exact(ct).pvalue)
+                statistic, method = None, "Fisher exact (two-sided)"
+                limitations.append("Used Fisher exact instead of the sparse-cell chi-square approximation.")
+            elif sparse:
+                p, reliable = None, False
+                method = "Descriptive contingency table (sparse expected counts)"
+                limitations.append("Suppressed the chi-square p-value because expected counts were too small.")
     if not tables:
         raise ValueError("Not enough observations or category variation for this comparison.")
     if h.kind == "stratified":
+        method = "Descriptive within-stratum Cramér’s V"
         limitations.append(
             "Stratum-specific comparisons are descriptive, not a causal adjustment or a pooled significance test."
         )
@@ -126,7 +172,7 @@ def _categorical(df: pd.DataFrame, h: Hypothesis, limitations: list[str]) -> _Su
     conclusion = f"{h.x} vs {h.y}: Cramér’s V = {effect:.3f}"
     if h.control:
         conclusion += f" (weighted within {h.control} strata)"
-    return _Summary(sum(counts), statistic, p, effect, conclusion + ".", table)
+    return _Summary(sum(counts), statistic, p, effect, conclusion + ".", table, method=method, reliable=reliable)
 
 
 _METHODS = {
@@ -166,4 +212,8 @@ def execute_analysis(df: pd.DataFrame, h: Hypothesis, index: int = 1) -> Evidenc
         list(dict.fromkeys(limitations)),
         result.table,
         code,
+        method=result.method,
+        assumptions=["Independent/exchangeable observations; verify the data collection design."],
+        diagnostics=result.diagnostics,
+        p_value_reliable=result.reliable,
     )
