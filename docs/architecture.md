@@ -64,9 +64,15 @@ Unit and Streamlit tests cover both engine selections, settings invalidation, pr
 
 ## Statistical policy
 
-Holm correction covers reported reliable primary p-values and explicit table p-values across the run. Duplicated reports are intentionally counted separately. The full family and adjusted values are retained. This does not remove adaptive selection bias, validate hidden/unreported comparisons, or make incorrect model assumptions valid.
+Holm correction covers trusted catalog tests and independently matched generated primary p-values across the run. Unverified generated tests are excluded, including secondary p-values in arbitrary tables. The full family and adjusted values are retained. This does not remove adaptive selection bias, validate hidden/unreported comparisons, or make incorrect model assumptions valid.
 
 Identifier/outcome-copy exclusions and possible timing/leakage warnings are heuristics. Generated fits' diagnostics are self-reported. Nonconvergence, separation warnings, and reported sparse expected counts can invalidate p-values for review/adjustment. Unsupported causal, significance, absence, or univariate-confounding claims are flagged; the source interpretation remains available for audit.
+
+`verification.py` independently rebuilds declared contingency recipes from the original host dataframe. It executes no generated source, accepts no arbitrary transforms, limits each dimension to 20 categories, and rejects mismatched counts/n/statistics/p-values, unsupported missingness policies, sparse Pearson inference, and ambiguous category labels. Recipes fix Pearson correction=False and Fisher alternative=two-sided; Fisher is limited to 2×2. Numeric predictors may use four qcut bins, after pairwise deletion. Failed or unverified generated tests cannot support adjusted inference. No matching result resets an existing failed-assumption flag.
+
+Matching arithmetic generates a trusted numerical summary and a host-rendered normalized chart. Original source, model interpretation, PNG artifacts, and execution records remain in structured evidence for audit. Original model prose and effects are not independently validated. One-to-one target recodings are excluded as possible proxies, and differential missingness is warned about; these checks cannot establish absence of leakage or selection bias. Unadjusted comparisons never establish control of confounding, even if the model labels its method "adjusted regression".
+
+The synthetic acceptance suite includes exact nulls, signals, sparse and multiclass tables, missingness, recoded leakage, Simpson reversal, malicious report mutations, and negation handling. `scripts/evaluate_analytical.py --live` runs a separate small-model evaluation through the actual Ollama/Docker path and records failures. Passing this finite corpus is not a general correctness guarantee.
 
 Small-sample Spearman uses a fixed-seed, bounded permutation test. Sparse 2×2 contingency tests use Fisher exact, while larger sparse tables expose descriptive results without a chi-square p-value. Kruskal–Wallis enforces the minimum group-size check. Independence/exchangeability must be established from collection context.
 

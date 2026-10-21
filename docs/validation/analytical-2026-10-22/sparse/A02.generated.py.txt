@@ -1,0 +1,39 @@
+from pico_tools import load_dataset, save_result
+import pandas as pd
+from scipy.stats import fisher_exact
+
+# Load the dataset
+df = load_dataset()
+
+# Pairwise complete cases
+paired = df[['x', 'y']].dropna()
+
+# Fisher's exact test
+result = fisher_exact(paired[['x', 'y']], alternative='two-sided')
+
+# Create the table
+table = [
+    {'group': str(g), 'category': str(c), 'count': int(counts.loc[g, c])}
+    for g in paired['x'].astype(str).unique() for c in paired['y'].astype(str).unique()
+]
+
+# Diagnostics
+diagnostics = {
+    'verification_test': 'fisher_exact',
+    'verification_missing': 'complete_case',
+    'verification_bins': 0
+}
+
+# Save the result
+save_result(
+    n=len(paired),
+    table=table,
+    statistic=float(result.statistic),
+    p_value=float(result.pvalue),
+    effect=None,
+    conclusion="Insufficient evidence to claim a relationship between x and y.",
+    limitations=["Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.", "16 duplicate rows may violate independence.", "Outcome has rare classes; estimates and tests may be unstable.", "This comparison is unadjusted. Matching counts and p-values does not rule out confounding or establish causality.", "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.", "Fewer than 50 usable rows; interpret estimates cautiously."],
+    method="Fisher's exact test",
+    assumptions=["Independent/exchangeable observations", "No missing data", "No confounding variables", "No adaptive selection"],
+    diagnostics=diagnostics
+)

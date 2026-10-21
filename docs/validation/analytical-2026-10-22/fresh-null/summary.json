@@ -1,0 +1,168 @@
+{
+  "fault_injection": false,
+  "git_sha": "b72888d25c4d6901e4b532d6eadb03ddcb6ee819",
+  "model_responses": [
+    {
+      "model": "qwen2.5-coder:7b",
+      "done_reason": "stop",
+      "prompt_eval_count": 1056,
+      "eval_count": 367,
+      "total_duration": 58838251708,
+      "load_duration": 3080026417,
+      "eval_duration": 42331202000
+    },
+    {
+      "model": "qwen2.5-coder:7b",
+      "done_reason": "stop",
+      "prompt_eval_count": 1632,
+      "eval_count": 382,
+      "total_duration": 51657375917,
+      "load_duration": 2485542,
+      "eval_duration": 44391900000
+    }
+  ],
+  "question": "Compare x against y with pearson_chi2, original categories, pairwise complete cases, no imputation. Use the independently checkable flat group/category/count table and verification diagnostics. Use correction=False for Pearson or alternative=\"two-sided\" for Fisher. Do not claim causality or interpret insufficient evidence as proof of no relationship.",
+  "model": "qwen2.5-coder:7b",
+  "model_digest": "dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364",
+  "elapsed_seconds": 114.32,
+  "engine": "python",
+  "attempts": 2,
+  "findings": 1,
+  "stop_reason": "Reached the 2-analysis budget.",
+  "executions": [
+    {
+      "id": "A01",
+      "status": "error",
+      "error": "Python exited with status 1; inspect stderr.",
+      "duration": 1.716,
+      "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+      "charts": []
+    },
+    {
+      "id": "A02",
+      "status": "ok",
+      "error": null,
+      "duration": 1.529,
+      "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+      "charts": []
+    }
+  ],
+  "conclusions": [
+    "A02: independently matched pearson_chi2, n=160; raw p=1, Holm-adjusted p=1. Exploratory, unadjusted comparison; matching arithmetic does not establish study validity."
+  ],
+  "verification": [
+    {
+      "id": "A02",
+      "status": "matched",
+      "recipe": "pearson_chi2",
+      "n": 160,
+      "p_value": 1.0,
+      "statistic": 0.0,
+      "min_expected_count": 40.0,
+      "table": [
+        {
+          "group": "0",
+          "category": "0",
+          "count": 40
+        },
+        {
+          "group": "0",
+          "category": "1",
+          "count": 40
+        },
+        {
+          "group": "1",
+          "category": "0",
+          "count": 40
+        },
+        {
+          "group": "1",
+          "category": "1",
+          "count": 40
+        }
+      ],
+      "reason": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified."
+    }
+  ],
+  "reviews": [
+    {
+      "id": "A02",
+      "status": "caution",
+      "original_conclusion": "Insufficient evidence to claim a significant association between x and y.",
+      "issues": [
+        {
+          "code": "adaptive_selection",
+          "message": "Holm adjustments describe the reported test family only. Adaptive selection, unreported tests, and invalid assumptions can still invalidate inference; use independent validation.",
+          "severity": "warning"
+        },
+        {
+          "code": "independence",
+          "message": "Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.",
+          "severity": "warning"
+        },
+        {
+          "code": "duplicates",
+          "message": "156 duplicate rows may violate independence.",
+          "severity": "warning"
+        },
+        {
+          "code": "independent_verification",
+          "message": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified.",
+          "severity": "warning"
+        },
+        {
+          "code": "unadjusted_comparison",
+          "message": "This comparison is unadjusted. Matching counts and p-values does not rule out confounding or establish causality.",
+          "severity": "warning"
+        },
+        {
+          "code": "generated_method",
+          "message": "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
+          "severity": "warning"
+        }
+      ]
+    }
+  ],
+  "activity": [
+    {
+      "stage": "Profile",
+      "message": "Inspected 160 rows and 2 columns."
+    },
+    {
+      "stage": "Data check",
+      "message": "156 duplicate rows may violate independence."
+    },
+    {
+      "stage": "Plan",
+      "message": "Generate and execute up to 2 Python investigations in disposable containers."
+    },
+    {
+      "stage": "Investigate",
+      "message": "Compare x against y with Pearson chi-squared test, original categories, pairwise complete cases, no imputation."
+    },
+    {
+      "stage": "Execution failed",
+      "message": "A01: Python exited with status 1; inspect stderr."
+    },
+    {
+      "stage": "Replan",
+      "message": "Return the execution error to the model for a repaired or different analysis."
+    },
+    {
+      "stage": "Investigate",
+      "message": "Compare x against y with pearson_chi2, original categories, pairwise complete cases, no imputation. Use the independently checkable flat group/category/count table and verification diagnostics. Use correction=False for Pearson or alternative=\"two-sided\" for Fisher. Do not claim causality or interpret insufficient evidence as proof of no relationship."
+    },
+    {
+      "stage": "Evaluate",
+      "message": "A02: A02: independently matched pearson_chi2, n=160; raw p=1, Holm-adjusted p=1. Exploratory, unadjusted comparison; matching arithmetic does not establish study validity. n=160."
+    },
+    {
+      "stage": "Statistical review",
+      "message": "Holm adjustment across 1 reported tests. Results remain exploratory under adaptive selection."
+    },
+    {
+      "stage": "Complete",
+      "message": "Reached the 2-analysis budget."
+    }
+  ]
+}

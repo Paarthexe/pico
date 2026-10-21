@@ -1,0 +1,46 @@
+from pico_tools import load_dataset, save_result
+import pandas as pd
+from scipy.stats import fisher_exact
+
+# Load the dataset
+df = load_dataset()
+
+# Pairwise complete cases
+paired = df[['x', 'y']].dropna()
+
+# Convert to categorical if not already
+paired['x'] = paired['x'].astype(str)
+paired['y'] = paired['y'].astype(str)
+
+# Create contingency table
+counts = pd.crosstab(paired['x'], paired['y'])
+
+# Perform Fisher's exact test
+result = fisher_exact(counts, alternative='two-sided')
+
+# Prepare the table for the result
+table = [
+    {'group': str(g), 'category': str(c), 'count': int(counts.loc[g, c])}
+    for g in counts.index for c in counts.columns
+]
+
+# Prepare diagnostics
+diagnostics = {
+    'verification_test': 'fisher_exact',
+    'verification_missing': 'complete_case',
+    'verification_bins': 0
+}
+
+# Save the result
+save_result(
+    n=len(paired),
+    table=table,
+    statistic=float(result.statistic),
+    p_value=float(result.pvalue),
+    effect=None,
+    conclusion="Insufficient evidence to claim a relationship between x and y.",
+    limitations=["Duplicate rows may violate independence.", "Outcome has rare classes; estimates and tests may be unstable."],
+    method="Fisher's exact test",
+    assumptions=["Pairwise complete cases", "No imputation", "Original categories"],
+    diagnostics=diagnostics
+)

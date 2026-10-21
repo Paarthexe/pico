@@ -1,0 +1,350 @@
+[
+  {
+    "case": "null",
+    "recipe": "pearson_chi2",
+    "rows": 160,
+    "status": "failed",
+    "returncode": 1,
+    "attempts": 2,
+    "findings": 1,
+    "verification": [
+      {
+        "id": "A02",
+        "status": "matched",
+        "recipe": "pearson_chi2",
+        "n": 160,
+        "p_value": 1.0,
+        "statistic": 0.0,
+        "min_expected_count": 40.0,
+        "table": [
+          {
+            "group": "0",
+            "category": "0",
+            "count": 40
+          },
+          {
+            "group": "0",
+            "category": "1",
+            "count": 40
+          },
+          {
+            "group": "1",
+            "category": "0",
+            "count": 40
+          },
+          {
+            "group": "1",
+            "category": "1",
+            "count": 40
+          }
+        ],
+        "reason": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified."
+      }
+    ],
+    "reviews": [
+      {
+        "id": "A02",
+        "status": "unsupported",
+        "original_conclusion": "Insufficient evidence to claim a significant association between x and y.",
+        "issues": [
+          {
+            "code": "adaptive_selection",
+            "message": "Holm adjustments describe the reported test family only. Adaptive selection, unreported tests, and invalid assumptions can still invalidate inference; use independent validation.",
+            "severity": "warning"
+          },
+          {
+            "code": "independence",
+            "message": "Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.",
+            "severity": "warning"
+          },
+          {
+            "code": "duplicates",
+            "message": "156 duplicate rows may violate independence.",
+            "severity": "warning"
+          },
+          {
+            "code": "independent_verification",
+            "message": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified.",
+            "severity": "warning"
+          },
+          {
+            "code": "unadjusted_comparison",
+            "message": "This comparison is unadjusted. Matching counts and p-values does not rule out confounding or establish causality.",
+            "severity": "warning"
+          },
+          {
+            "code": "generated_method",
+            "message": "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
+            "severity": "warning"
+          },
+          {
+            "code": "significance_claim",
+            "message": "The significance claim is not supported by a reliable primary p-value below 0.05 after adjustment.",
+            "severity": "blocking"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "case": "signal",
+    "recipe": "pearson_chi2",
+    "rows": 200,
+    "status": "passed",
+    "returncode": 0,
+    "attempts": 2,
+    "findings": 1,
+    "verification": [
+      {
+        "id": "A02",
+        "status": "matched",
+        "recipe": "pearson_chi2",
+        "n": 200,
+        "p_value": 2.1519736712498897e-17,
+        "statistic": 72.0,
+        "min_expected_count": 50.0,
+        "table": [
+          {
+            "group": "0",
+            "category": "0",
+            "count": 80
+          },
+          {
+            "group": "0",
+            "category": "1",
+            "count": 20
+          },
+          {
+            "group": "1",
+            "category": "0",
+            "count": 20
+          },
+          {
+            "group": "1",
+            "category": "1",
+            "count": 80
+          }
+        ],
+        "reason": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified."
+      }
+    ],
+    "reviews": [
+      {
+        "id": "A02",
+        "status": "caution",
+        "original_conclusion": "Insufficient evidence to claim a significant association between x and y.",
+        "issues": [
+          {
+            "code": "adaptive_selection",
+            "message": "Holm adjustments describe the reported test family only. Adaptive selection, unreported tests, and invalid assumptions can still invalidate inference; use independent validation.",
+            "severity": "warning"
+          },
+          {
+            "code": "independence",
+            "message": "Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.",
+            "severity": "warning"
+          },
+          {
+            "code": "duplicates",
+            "message": "196 duplicate rows may violate independence.",
+            "severity": "warning"
+          },
+          {
+            "code": "independent_verification",
+            "message": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified.",
+            "severity": "warning"
+          },
+          {
+            "code": "unadjusted_comparison",
+            "message": "This comparison is unadjusted. Matching counts and p-values does not rule out confounding or establish causality.",
+            "severity": "warning"
+          },
+          {
+            "code": "generated_method",
+            "message": "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
+            "severity": "warning"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "case": "sparse",
+    "recipe": "fisher_exact",
+    "rows": 20,
+    "status": "passed",
+    "returncode": 0,
+    "attempts": 2,
+    "findings": 1,
+    "verification": [
+      {
+        "id": "A01",
+        "status": "matched",
+        "recipe": "fisher_exact",
+        "n": 20,
+        "p_value": 0.005477494641581329,
+        "statistic": 0.027777777777777776,
+        "min_expected_count": 4.5,
+        "table": [
+          {
+            "group": "0",
+            "category": "0",
+            "count": 1
+          },
+          {
+            "group": "0",
+            "category": "1",
+            "count": 9
+          },
+          {
+            "group": "1",
+            "category": "0",
+            "count": 8
+          },
+          {
+            "group": "1",
+            "category": "1",
+            "count": 2
+          }
+        ],
+        "reason": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified."
+      }
+    ],
+    "reviews": [
+      {
+        "id": "A01",
+        "status": "caution",
+        "original_conclusion": "Insufficient evidence to claim a relationship between x and y.",
+        "issues": [
+          {
+            "code": "adaptive_selection",
+            "message": "Holm adjustments describe the reported test family only. Adaptive selection, unreported tests, and invalid assumptions can still invalidate inference; use independent validation.",
+            "severity": "warning"
+          },
+          {
+            "code": "independence",
+            "message": "Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.",
+            "severity": "warning"
+          },
+          {
+            "code": "duplicates",
+            "message": "16 duplicate rows may violate independence.",
+            "severity": "warning"
+          },
+          {
+            "code": "imbalance",
+            "message": "Outcome has rare classes; estimates and tests may be unstable.",
+            "severity": "warning"
+          },
+          {
+            "code": "independent_verification",
+            "message": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified.",
+            "severity": "warning"
+          },
+          {
+            "code": "unadjusted_comparison",
+            "message": "This comparison is unadjusted. Matching counts and p-values does not rule out confounding or establish causality.",
+            "severity": "warning"
+          },
+          {
+            "code": "generated_method",
+            "message": "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
+            "severity": "warning"
+          },
+          {
+            "code": "small_sample",
+            "message": "Fewer than 50 usable rows; interpret estimates cautiously.",
+            "severity": "warning"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "case": "missingness",
+    "recipe": "pearson_chi2",
+    "rows": 200,
+    "status": "passed",
+    "returncode": 0,
+    "attempts": 2,
+    "findings": 1,
+    "verification": [
+      {
+        "id": "A02",
+        "status": "matched",
+        "recipe": "pearson_chi2",
+        "n": 190,
+        "p_value": 2.1878289254619497e-21,
+        "statistic": 90.16790123456789,
+        "min_expected_count": 42.63157894736842,
+        "table": [
+          {
+            "group": "0.0",
+            "category": "0",
+            "count": 80
+          },
+          {
+            "group": "0.0",
+            "category": "1",
+            "count": 10
+          },
+          {
+            "group": "1.0",
+            "category": "0",
+            "count": 20
+          },
+          {
+            "group": "1.0",
+            "category": "1",
+            "count": 80
+          }
+        ],
+        "reason": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified."
+      }
+    ],
+    "reviews": [
+      {
+        "id": "A02",
+        "status": "caution",
+        "original_conclusion": "Insufficient evidence to claim a significant association between x and y.",
+        "issues": [
+          {
+            "code": "adaptive_selection",
+            "message": "Holm adjustments describe the reported test family only. Adaptive selection, unreported tests, and invalid assumptions can still invalidate inference; use independent validation.",
+            "severity": "warning"
+          },
+          {
+            "code": "independence",
+            "message": "Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.",
+            "severity": "warning"
+          },
+          {
+            "code": "duplicates",
+            "message": "195 duplicate rows may violate independence.",
+            "severity": "warning"
+          },
+          {
+            "code": "independent_verification",
+            "message": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified.",
+            "severity": "warning"
+          },
+          {
+            "code": "unadjusted_comparison",
+            "message": "This comparison is unadjusted. Matching counts and p-values does not rule out confounding or establish causality.",
+            "severity": "warning"
+          },
+          {
+            "code": "generated_method",
+            "message": "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
+            "severity": "warning"
+          },
+          {
+            "code": "missingness",
+            "message": "Used 190/200 observations; missingness/subsetting can bias the result.",
+            "severity": "warning"
+          }
+        ]
+      }
+    ]
+  }
+]

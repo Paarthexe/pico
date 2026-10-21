@@ -1,0 +1,42 @@
+from pico_tools import load_dataset, save_result
+import pandas as pd
+from scipy.stats import chi2_contingency
+
+# Load the dataset
+df = load_dataset()
+
+# Pairwise complete cases
+paired = df[['x', 'y']].dropna()
+
+# Create contingency table
+counts = pd.crosstab(paired['x'].astype(str), paired['y'].astype(str))
+
+# Perform Pearson chi-squared test
+result = chi2_contingency(counts, correction=False)
+
+# Prepare the table for the result
+table = [
+    {'group': str(g), 'category': str(c), 'count': int(counts.loc[g, c])}
+    for g in counts.index for c in counts.columns
+]
+
+# Prepare diagnostics
+diagnostics = {
+    'verification_test': 'pearson_chi2',
+    'verification_missing': 'complete_case',
+    'verification_bins': 0
+}
+
+# Save the result
+save_result(
+    n=len(paired),
+    table=table,
+    statistic=float(result.statistic),
+    p_value=float(result.pvalue),
+    effect=None,
+    conclusion="Insufficient evidence to claim a significant association between x and y.",
+    limitations=["Missingness in the data", "Potential confounding factors", "Adaptive selection"],
+    method="Pearson chi-squared test",
+    assumptions=["Independence of observations", "Expected cell counts >= 5"],
+    diagnostics=diagnostics
+)

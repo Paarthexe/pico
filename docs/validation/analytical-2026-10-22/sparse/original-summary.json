@@ -1,0 +1,182 @@
+{
+  "fault_injection": false,
+  "git_sha": "b72888d25c4d6901e4b532d6eadb03ddcb6ee819",
+  "model_responses": [
+    {
+      "model": "qwen2.5-coder:7b",
+      "done_reason": "stop",
+      "prompt_eval_count": 1083,
+      "eval_count": 372,
+      "total_duration": 49511371583,
+      "load_duration": 1803833,
+      "eval_duration": 44566702000
+    },
+    {
+      "model": "qwen2.5-coder:7b",
+      "done_reason": "stop",
+      "prompt_eval_count": 1961,
+      "eval_count": 417,
+      "total_duration": 61708266458,
+      "load_duration": 2104208,
+      "eval_duration": 49970010000
+    }
+  ],
+  "question": "Compare x against y with fisher_exact, original categories, pairwise complete cases, no imputation. Use the independently checkable flat group/category/count table and verification diagnostics. Use correction=False for Pearson or alternative=\"two-sided\" for Fisher. Do not claim causality or interpret insufficient evidence as proof of no relationship.",
+  "model": "qwen2.5-coder:7b",
+  "model_digest": "dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364",
+  "elapsed_seconds": 114.53,
+  "engine": "python",
+  "attempts": 2,
+  "findings": 1,
+  "stop_reason": "Reached the 2-analysis budget.",
+  "executions": [
+    {
+      "id": "A01",
+      "status": "ok",
+      "error": null,
+      "duration": 1.455,
+      "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+      "charts": []
+    },
+    {
+      "id": "A02",
+      "status": "error",
+      "error": "Python exited with status 1; inspect stderr.",
+      "duration": 1.442,
+      "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+      "charts": []
+    }
+  ],
+  "conclusions": [
+    "Insufficient evidence to claim a relationship between x and y."
+  ],
+  "verification": [
+    {
+      "id": "A01",
+      "status": "matched",
+      "recipe": "fisher_exact",
+      "n": 20,
+      "p_value": 0.005477494641581329,
+      "statistic": 0.027777777777777776,
+      "min_expected_count": 4.5,
+      "table": [
+        {
+          "group": "0",
+          "category": "0",
+          "count": 1
+        },
+        {
+          "group": "0",
+          "category": "1",
+          "count": 9
+        },
+        {
+          "group": "1",
+          "category": "0",
+          "count": 8
+        },
+        {
+          "group": "1",
+          "category": "1",
+          "count": 2
+        }
+      ],
+      "reason": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified."
+    }
+  ],
+  "reviews": [
+    {
+      "id": "A01",
+      "status": "caution",
+      "original_conclusion": "Insufficient evidence to claim a relationship between x and y.",
+      "issues": [
+        {
+          "code": "adaptive_selection",
+          "message": "Holm adjustments describe the reported test family only. Adaptive selection, unreported tests, and invalid assumptions can still invalidate inference; use independent validation.",
+          "severity": "warning"
+        },
+        {
+          "code": "independence",
+          "message": "Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.",
+          "severity": "warning"
+        },
+        {
+          "code": "duplicates",
+          "message": "16 duplicate rows may violate independence.",
+          "severity": "warning"
+        },
+        {
+          "code": "imbalance",
+          "message": "Outcome has rare classes; estimates and tests may be unstable.",
+          "severity": "warning"
+        },
+        {
+          "code": "independent_verification",
+          "message": "Counts, sample size, statistic and p-value match independent recomputation; study assumptions remain unverified.",
+          "severity": "warning"
+        },
+        {
+          "code": "unadjusted_comparison",
+          "message": "This comparison is unadjusted. Matching counts and p-values does not rule out confounding or establish causality.",
+          "severity": "warning"
+        },
+        {
+          "code": "generated_method",
+          "message": "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
+          "severity": "warning"
+        },
+        {
+          "code": "small_sample",
+          "message": "Fewer than 50 usable rows; interpret estimates cautiously.",
+          "severity": "warning"
+        }
+      ]
+    }
+  ],
+  "activity": [
+    {
+      "stage": "Profile",
+      "message": "Inspected 20 rows and 2 columns."
+    },
+    {
+      "stage": "Data check",
+      "message": "16 duplicate rows may violate independence."
+    },
+    {
+      "stage": "Data check",
+      "message": "Outcome has rare classes; estimates and tests may be unstable."
+    },
+    {
+      "stage": "Plan",
+      "message": "Generate and execute up to 2 Python investigations in disposable containers."
+    },
+    {
+      "stage": "Investigate",
+      "message": "Compare x against y with Fisher's exact test, original categories, pairwise complete cases, no imputation."
+    },
+    {
+      "stage": "Evaluate",
+      "message": "A01: Insufficient evidence to claim a relationship between x and y. n=20."
+    },
+    {
+      "stage": "Replan",
+      "message": "Use the executed results to decide the next investigation."
+    },
+    {
+      "stage": "Investigate",
+      "message": "Compare x against y with Fisher's exact test, original categories, pairwise complete cases, no imputation."
+    },
+    {
+      "stage": "Execution failed",
+      "message": "A02: Python exited with status 1; inspect stderr."
+    },
+    {
+      "stage": "Statistical review",
+      "message": "Holm adjustment across 1 reported tests. Results remain exploratory under adaptive selection."
+    },
+    {
+      "stage": "Complete",
+      "message": "Reached the 2-analysis budget."
+    }
+  ]
+}

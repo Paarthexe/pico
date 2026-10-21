@@ -100,6 +100,10 @@ The original CSV is excluded. Evidence tables, correlation points, logs, generat
 
 All results are exploratory associations. Adaptive selection, multiple comparisons, sparse cells, missingness, possible leakage, and model assumptions limit inference. Raw p-values are retained alongside Holm-adjusted values where eligible. Execution and schema validation do not establish statistical correctness or causation; validate candidate findings independently.
 
+Generated contingency analyses can now be checked independently against the original dataset. Supported recipes are pairwise complete-case Pearson chi-square (no continuity correction) and two-sided 2×2 Fisher exact, with original categories or four quantile bins of a numeric predictor. The host checks counts, sample size, statistic and p-value; mismatches and unsupported generated tests are excluded from inferential correction. Matched findings use a host-generated numerical summary and proportion chart; model prose remains available separately. This verifies arithmetic, not representativeness, independence, confounding, effect sizes, or arbitrary model code.
+
+Run `.venv/bin/python scripts/evaluate_analytical.py` to prepare reproducible null, signal, sparse and missing-data fixtures. Add `--live` to evaluate actual Ollama generations in Docker. Acceptance requires at least one independently matched finding without blocking review issues per case. Logs retain execution failures and rejected findings. See [analytical validation](docs/validation/analytical-2026-10-22/README.md) for results and limits.
+
 ## Development
 
 ```sh
