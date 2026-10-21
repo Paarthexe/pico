@@ -8,6 +8,8 @@ from dataclasses import asdict
 from pathlib import Path
 from urllib.request import urlopen
 
+import pandas as pd
+
 from pico.agent import investigate
 from pico.data import demo_dataset
 from pico.ollama import OllamaClient
@@ -29,6 +31,9 @@ def main() -> None:
         help="Explicitly inject a labeled first-attempt failure to test live repair.",
     )
     parser.add_argument("--budget", type=int, default=3)
+    parser.add_argument("--dataset", type=Path, help="Optional evaluation CSV; default is the demo dataset.")
+    parser.add_argument("--target", default="churn")
+    parser.add_argument("--require-verified", action="store_true", help="Require independently matched findings.")
     parser.add_argument(
         "--minimum-findings", type=int, default=2, help="Required executed findings for this smoke test."
     )
@@ -55,8 +60,8 @@ def main() -> None:
             return record
 
     run = investigate(
-        demo_dataset(),
-        "churn",
+        pd.read_csv(args.dataset) if args.dataset else demo_dataset(),
+        args.target,
         question=args.question,
         budget=args.budget,
         model=args.model,
@@ -91,6 +96,7 @@ def main() -> None:
             for e in run.executions
         ],
         conclusions=[e.conclusion for e in run.evidence],
+        verification=[dict(id=e.id, **e.review.verification) for e in run.evidence if e.review],
         activity=run.activity,
     )
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2))
@@ -99,6 +105,12 @@ def main() -> None:
         raise SystemExit(
             f"Live validation did not produce {args.minimum_findings} executed findings; inspect its saved evidence."
         )
+    if (
+        args.require_verified
+        and sum(e.review.verification.get("status") == "matched" for e in run.evidence if e.review)
+        < args.minimum_findings
+    ):
+        raise SystemExit("Live validation did not produce enough independently matched findings.")
 
 
 if __name__ == "__main__":

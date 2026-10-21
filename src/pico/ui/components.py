@@ -95,6 +95,10 @@ def evidence_card(evidence: Evidence) -> None:
             st.caption(evidence.method)
         if evidence.review:
             review = evidence.review
+            if evidence.execution and review.verification:
+                st.caption(
+                    f"Independent calculation check: {review.verification['status']}. Study design remains unverified."
+                )
             if review.adjusted_p_value is not None:
                 st.caption(
                     f"Holm-adjusted p = {review.adjusted_p_value:.4g} · {review.family_size} reported tests · exploratory"

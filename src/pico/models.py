@@ -52,6 +52,7 @@ class FindingReview:
     family_size: int = 0
     adjusted_tests: list[dict] = field(default_factory=list)
     issues: list[dict] = field(default_factory=list)
+    verification: dict = field(default_factory=dict)
 
 
 @dataclass

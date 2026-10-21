@@ -48,21 +48,25 @@ def test_holm_known_values_order_empty_and_validation():
 
 def test_correction_covers_primary_and_table_tests_and_exportable_review():
     first, second = finding(table=[{"term": "extra", "p_value": 0.03}]), finding(2, 0.04)
+    # Trusted catalog p-values exercise primary correction; generated table tests
+    # require independent verification and are no longer accepted on assertion.
+    first.execution = second.execution = None
     run = run_with(first, second)
     review_investigation(frame(), run)
-    assert run.multiplicity["family_size"] == 3
-    assert first.review.adjusted_p_value == pytest.approx(0.03)
-    assert second.review.adjusted_p_value == pytest.approx(0.06)
-    assert first.review.adjusted_tests[1]["adjusted_p_value"] == pytest.approx(0.06)
+    assert run.multiplicity["family_size"] == 2
+    assert first.review.adjusted_p_value == pytest.approx(0.02)
+    assert second.review.adjusted_p_value == pytest.approx(0.04)
     assert "Adaptive selection" in run.multiplicity["limitation"]
 
 
 def test_later_tests_revise_unsupported_significance_without_losing_original():
     first = finding(p=0.04, conclusion="A statistically significant association was observed.")
+    first.execution = None
     run = run_with(first)
     review_investigation(frame(), run)
     assert first.review.status == "caution"
     run.evidence.append(finding(2, 0.03))
+    run.evidence[-1].execution = None
     review_investigation(frame(), run)
     assert first.review.status == "unsupported"
     assert "statistically significant" in first.review.original_conclusion
@@ -74,6 +78,7 @@ def test_later_tests_revise_unsupported_significance_without_losing_original():
 def test_causal_claim_flag_and_negated_causality():
     unsafe = finding(conclusion="Income causes the outcome and proves the mechanism.")
     safe = finding(2, conclusion="This does not prove causality; the result is associational.")
+    safe.execution = None
     run = run_with(unsafe, safe)
     review_investigation(frame(), run)
     assert unsafe.review.status == "unsupported"
@@ -147,6 +152,6 @@ def test_live_discovered_positive_claim_with_p_099_is_not_endorsed():
     run = run_with(evidence)
     review_investigation(frame(), run)
     assert evidence.review.status == "unsupported"
-    assert any(issue["code"] == "association_claim" for issue in evidence.review.issues)
+    assert any(issue["code"] == "unreliable_test" for issue in evidence.review.issues)
     assert evidence.review.original_conclusion == "Age groups are associated with churn rates."
     assert "requires review" in evidence.conclusion

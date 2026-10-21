@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from pico.models import Evidence, FindingReview, Investigation
+from pico.verification import verify_contingency
 
 ADAPTIVE_CAVEAT = (
     "Holm adjustments describe the reported test family only. Adaptive selection, "
@@ -128,6 +129,12 @@ def _review_one(df: pd.DataFrame, run: Investigation, evidence: Evidence, review
             blocking = warning["code"] in {"identifier", "target_copy"}
             issue(warning["code"], warning["message"], "blocking" if blocking else "warning")
     if evidence.execution:
+        verification = review.verification
+        issue(
+            "independent_verification",
+            verification["reason"],
+            "blocking" if verification["status"] == "failed" else "warning",
+        )
         issue(
             "generated_method",
             "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
@@ -215,6 +222,10 @@ def review_investigation(df: pd.DataFrame, run: Investigation) -> None:
                 evidence.p_value_reliable = False
         original = evidence.review.original_conclusion if evidence.review else evidence.conclusion
         evidence.review = FindingReview(original)
+        if evidence.execution:
+            evidence.review.verification = verify_contingency(df, evidence)
+            if evidence.review.verification["status"] != "matched" and evidence.p_value is not None:
+                evidence.p_value_reliable = False
         tests.extend((evidence, label, p) for label, p in _reported_tests(evidence))
     adjusted = holm_adjust([p for _, _, p in tests])
     for (evidence, label, raw), value in zip(tests, adjusted):

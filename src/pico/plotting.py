@@ -54,6 +54,23 @@ def generate_plot(e: Evidence) -> bytes:
 
 def charts_for(evidence: Evidence) -> list[tuple[str, bytes]]:
     if evidence.execution is not None:
+        verification = evidence.review.verification if evidence.review else {}
+        if verification.get("status") == "matched":
+            table = pd.DataFrame(verification["table"])
+            counts = table.pivot(index="group", columns="category", values="count")
+            proportions = counts.div(counts.sum(axis=1), axis=0)
+            fig, ax = plt.subplots(figsize=(8, 4.5), layout="constrained")
+            proportions.plot.bar(stacked=True, ax=ax, colormap="tab20")
+            ax.set(
+                xlabel=evidence.hypothesis["x"],
+                ylabel=f"Proportion of {evidence.hypothesis['y']}",
+                ylim=(0, 1),
+                title=f"{evidence.id} · Independently rebuilt group proportions",
+            )
+            output = BytesIO()
+            fig.savefig(output, format="png", dpi=140)
+            plt.close(fig)
+            return [(f"{evidence.id}-checked-proportions.png", output.getvalue())]
         return [
             (f"{evidence.id}-{a.name}", base64.b64decode(a.data_base64, validate=True))
             for a in evidence.execution.artifacts

@@ -134,6 +134,14 @@ Use from pico_tools import load_dataset, save_result. Call load_dataset() with n
 Call save_result(n=..., conclusion=..., limitations=[...], table=[aggregate dicts], statistic=..., p_value=..., effect=...,
                  method=..., assumptions=[...], diagnostics={...}). All measured values must come from your executed code.
 Write one concise analysis, usually 20–40 lines. Do not build a whole modeling/EDA pipeline or wrap every line in try/except.
+For independently checkable contingency tests, use only df[[x,y]].dropna() (no imputation or other filtering).
+Optionally bin numeric x with pd.qcut(...,4,labels=False), after dropping missing x and y.
+Use chi2_contingency(counts, correction=False) for Pearson, or fisher_exact(counts, alternative='two-sided') for 2x2.
+Return table as a flat list of {'group': str(x_group), 'category': str(y_group), 'count': int(count)} including zero cells.
+For quantile groups use str(int(group)) as the group label.
+Set diagnostics verification_test='pearson_chi2' or 'fisher_exact', verification_missing='complete_case',
+verification_bins=4 for qcut or 0 for original categories. Other methods/transformations remain unverified.
+The host independently rebuilds the declared recipe from original data; inventing diagnostics will not verify a result.
 Execute exactly ONE comparison per proposal. statistic, p_value and effect must each be a single scalar or None, never lists.
 table must be a FLAT list of dictionaries with scalar values, e.g. counts.reset_index().to_dict(orient='records').
 Never nest tables inside table. Choose any other comparison in a later proposal.
@@ -195,6 +203,13 @@ class PythonPlanner:
             dict(id=e.id, code=e.code, status=e.status, error=e.error, stderr=e.stderr[-2000:])
             for e in run.executions[-2:]
         ]
+        for attempt in context["attempts"]:
+            evidence = next((e for e in run.evidence if e.id == attempt["id"]), None)
+            if evidence and evidence.review and evidence.review.status == "unsupported":
+                attempt["status"] = "review_failed"
+                attempt["error"] = "Statistical review rejected the interpretation: " + "; ".join(
+                    issue["message"] for issue in evidence.review.issues if issue["severity"] == "blocking"
+                )
         answer = self.client.generate_analysis(PYTHON_SYSTEM, context)
         for field in PYTHON_SCHEMA["required"]:
             if not isinstance(answer.get(field), str) or not answer[field].strip():
