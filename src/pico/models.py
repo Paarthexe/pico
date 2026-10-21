@@ -1,9 +1,10 @@
 """Shared domain records; independent of UI, model providers, and execution engines."""
+
 from dataclasses import dataclass, field
 from typing import Literal
 
-AnalysisKind = Literal['correlation', 'groups', 'numeric_groups', 'missingness', 'stratified', 'python']
-ExecutionStatus = Literal['ok', 'error', 'timeout', 'output_limit', 'unavailable']
+AnalysisKind = Literal["correlation", "groups", "numeric_groups", "missingness", "stratified", "python"]
+ExecutionStatus = Literal["ok", "error", "timeout", "output_limit", "unavailable"]
 
 
 @dataclass(frozen=True)
@@ -22,9 +23,10 @@ class Hypothesis:
 @dataclass(frozen=True)
 class Artifact:
     """Validated PNG stored inline so a completed run needs no container or temp files."""
+
     name: str
     data_base64: str
-    media_type: str = 'image/png'
+    media_type: str = "image/png"
 
 
 @dataclass
@@ -33,8 +35,8 @@ class ExecutionRecord:
     code: str
     status: ExecutionStatus
     duration_seconds: float
-    stdout: str = ''
-    stderr: str = ''
+    stdout: str = ""
+    stderr: str = ""
     error: str | None = None
     artifacts: list[Artifact] = field(default_factory=list)
     result: dict | None = None
@@ -74,7 +76,7 @@ class Investigation:
     budget: int
     evidence: list[Evidence] = field(default_factory=list)
     activity: list[dict] = field(default_factory=list)
-    stop_reason: str = ''
+    stop_reason: str = ""
     executions: list[ExecutionRecord] = field(default_factory=list)
-    engine: str = 'catalog'
+    engine: str = "catalog"
     model: str | None = None

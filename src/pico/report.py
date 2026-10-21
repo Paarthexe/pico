@@ -1,91 +1,159 @@
-"""Portable evidence reports, notebooks, and chart assets."""
-from dataclasses import asdict
-from io import BytesIO
+"""Portable reports and safe replay: generated source only executes through Docker."""
+
 import json
 import zipfile
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import pandas as pd
-from pico.agent import Investigation
-from pico.analysis import Evidence
+from dataclasses import asdict
+from io import BytesIO
+
+from pico.models import Evidence, Investigation
+from pico.plotting import charts_for  # Compatibility public import.
+from pico.plotting import generate_plot as generate_plot
 
 
-def generate_plot(e: Evidence) -> bytes:
-    h = e.hypothesis
-    table = pd.DataFrame(e.table)
-    with plt.rc_context({'axes.spines.top': False, 'axes.spines.right': False,
-                         'axes.labelcolor': '#121c22', 'text.color': '#121c22'}):
-        fig, ax = plt.subplots(figsize=(8, 4.5), layout='constrained')
-        if h['kind'] == 'correlation':
-            ax.scatter(table[h['x']], table[h['y']], s=12, alpha=.35, color='#017ca8')
-            ax.set(xlabel=h['x'], ylabel=h['y'])
-        elif h['kind'] == 'numeric_groups':
-            ax.bar(table['group'].astype(str), table['median'], color='#017ca8')
-            ax.set(xlabel=h['x'], ylabel=f"Median {h['y']}")
-        else:
-            # Each group/stratum sums to 100%; no privileged positive label assumed.
-            def short_label(value):
-                return value.split(' ', 1)[0] if value.startswith(('Q1 ', 'Q2 ', 'Q3 ', 'Q4 ')) else value
-            pivot = table.pivot(index=['stratum', 'group'], columns='category', values='proportion').fillna(0)
-            pivot.plot.bar(stacked=True, ax=ax, colormap='tab20', width=.7)
-            ax.set_xticklabels([short_label(group) + (' / ' + short_label(stratum) if h['control'] else '')
-                                for stratum, group in pivot.index])
-            ax.set(xlabel=h['x'], ylabel=f"Proportion of {h['y']}", ylim=(0, 1))
-            if h['control']:
-                ax.set_xlabel(f"{h['x']} group / {h['control']} stratum")
-            ax.legend(title=h['y'], bbox_to_anchor=(1.01, 1), loc='upper left')
-        ax.set_title(f"{e.id} · {h['x']} and {h['y']}", loc='left', pad=16)
-        if h['kind'] == 'correlation' and e.n > len(table):
-            ax.set_title(f"{e.id} · {h['x']} and {h['y']} (first {len(table):,} complete rows)", loc='left', pad=16)
-        ax.tick_params(axis='x', labelrotation=35)
-        output = BytesIO()
-        fig.savefig(output, format='png', dpi=140)
-        plt.close(fig)
-    return output.getvalue()
+def replay_code(evidence: Evidence) -> str:
+    if evidence.execution is None:
+        return evidence.code
+    return (
+        "# Generated Python is passed to Docker, never executed on this host.\n"
+        "from pathlib import Path\nfrom pico.data import load_csv\n"
+        "from pico.sandbox import DockerSandbox\n"
+        'dataset = Path("dataset.csv").read_bytes()\n'
+        f"source = {evidence.code!r}\n"
+        f"result = DockerSandbox().execute(source, dataset, len(load_csv(dataset)), {evidence.id!r})\n"
+        'if result.status != "ok":\n    raise RuntimeError(result.error)\n'
+        "print(result.result)\n"
+    )
 
 
 def markdown_report(run: Investigation) -> str:
-    lines = ['# Pico investigation', '', f'**Question:** {run.question or "Explore associations with the selected target."}',
-             f'**Target:** {run.target}', f'**Planner:** {run.mode}',
-             f'**Dataset:** {run.profile["rows"]:,} rows, {run.profile["columns"]} columns', '',
-             'All results are exploratory associations. Adaptive selection and multiple comparisons '
-             'can exaggerate apparent signals. Validate on independent data before acting.', '']
+    lines = [
+        "# Pico investigation",
+        "",
+        f"**Question:** {run.question or 'Explore associations with the selected target.'}",
+        f"**Target:** {run.target}",
+        f"**Planner:** {run.mode}",
+        f"**Engine:** {run.engine}",
+        f"**Dataset:** {run.profile['rows']:,} rows, {run.profile['columns']} columns",
+        "",
+        "All results are exploratory associations. Adaptive selection and multiple comparisons "
+        "can exaggerate apparent signals. Validate on independent data before acting.",
+        "",
+    ]
     if not run.evidence:
-        lines += ['No eligible analysis produced evidence.', '']
+        lines += ["No eligible analysis produced evidence.", ""]
     for e in run.evidence:
-        lines += [f'## {e.id}: {e.hypothesis["x"]} and {e.hypothesis["y"]}', '',
-                  e.conclusion, '', f'Usable observations: {e.n}.',
-                  f'Raw p-value: {e.p_value:.4g}.' if e.p_value is not None else 'No pooled p-value reported.', '',
-                  f'![{e.id} analysis chart](charts/{e.id}.png)', '',
-                  *[f'- {c}' for c in e.limitations], '',
-                  '```python', e.code, '```', '']
-    lines += ['## Investigation log', '', *[f'- **{a["stage"]}:** {a["message"]}' for a in run.activity], '',
-              '## Suggested next steps', '', 'Confirm candidate associations on held-out data, inspect measurement '
-              'quality and possible leakage, and consult domain context before interpreting mechanisms.', '',
-              f'Stopped: {run.stop_reason}']
-    return '\n'.join(lines)
+        lines += [
+            f"## {e.id}: {e.hypothesis['x']} and {e.hypothesis['y']}",
+            "",
+            e.conclusion,
+            "",
+            f"Usable observations: {e.n}.",
+            f"Raw p-value: {e.p_value:.4g}." if e.p_value is not None else "No pooled p-value reported.",
+            "",
+        ]
+        if e.execution:
+            lines += [
+                f"Execution: {e.execution.status}, {e.execution.duration_seconds:.2f}s.",
+                f"Worker image: `{e.execution.image}`.",
+                "",
+            ]
+        for name, _ in charts_for(e):
+            lines += [f"![{e.id} analysis chart](charts/{name})", ""]
+        lines += [
+            *[f"- {c}" for c in e.limitations],
+            "",
+            "Replay through the installed Pico execution interface:",
+            "",
+            "```python",
+            replay_code(e),
+            "```",
+            "",
+        ]
+    failures = [e for e in run.executions if e.status != "ok"]
+    if failures:
+        lines += ["## Failed execution attempts", ""]
+        lines += [f"- {e.id} ({e.status}): {e.error}" for e in failures]
+        lines += [""]
+    lines += [
+        "## Investigation log",
+        "",
+        *[f"- **{a['stage']}:** {a['message']}" for a in run.activity],
+        "",
+        "## Suggested next steps",
+        "",
+        "Confirm candidate associations on held-out data, inspect measurement "
+        "quality and possible leakage, and consult domain context before interpreting mechanisms.",
+        "",
+        f"Stopped: {run.stop_reason}",
+    ]
+    return "\n".join(lines)
 
 
 def notebook(run: Investigation) -> str:
-    cells = [dict(cell_type='markdown', metadata={}, source=['# Pico reproducible investigation\n',
-              'Install pico-eda and put the original CSV beside this notebook as dataset.csv.\n',
-              'These are exploratory associations, not causal estimates.'])]
+    cells = [
+        dict(
+            cell_type="markdown",
+            metadata={},
+            source=[
+                "# Pico reproducible investigation\n",
+                "Install pico-eda and put the original CSV beside this notebook as dataset.csv.\n",
+                "Generated analyses require Docker and the built pico-sandbox:1 image.\n",
+                "These are exploratory associations, not causal estimates.",
+            ],
+        )
+    ]
     for e in run.evidence:
-        cells.append(dict(cell_type='markdown', metadata={}, source=[f'## {e.id}\n', e.conclusion]))
-        cells.append(dict(cell_type='code', metadata={}, execution_count=None, outputs=[],
-                          source=e.code.splitlines(keepends=True)))
-    return json.dumps(dict(cells=cells, metadata={'kernelspec': {'display_name': 'Python 3',
-                      'language': 'python', 'name': 'python3'}}, nbformat=4, nbformat_minor=4), indent=2)
+        cells.append(dict(cell_type="markdown", metadata={}, source=[f"## {e.id}\n", e.conclusion]))
+        cells.append(
+            dict(
+                cell_type="code",
+                metadata={},
+                execution_count=None,
+                outputs=[],
+                source=replay_code(e).splitlines(keepends=True),
+            )
+        )
+    return json.dumps(
+        dict(
+            cells=cells,
+            metadata={"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"}},
+            nbformat=4,
+            nbformat_minor=4,
+        ),
+        indent=2,
+    )
+
+
+EXPORT_README = """# Pico investigation bundle
+
+Place the original CSV beside this file as dataset.csv. Install pico-eda.
+The notebook and replay/ scripts use the appropriate execution engine.
+
+IMPORTANT: files under code/ and attempts/ can contain model-generated Python.
+Do not execute them directly on your host. replay/ scripts send generated code
+through Pico's restricted Docker worker. Build pico-sandbox:1 first.
+
+The original dataset is excluded, but evidence, logs, code, and charts can include
+sensitive dataset values. Model-generated statistical claims require review.
+The original worker image digest is recorded in evidence.json for provenance.
+"""
 
 
 def export_bundle(run: Investigation) -> bytes:
     output = BytesIO()
-    with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr('report.md', markdown_report(run))
-        archive.writestr('evidence.json', json.dumps(asdict(run), indent=2, allow_nan=False))
-        archive.writestr('investigation.ipynb', notebook(run))
+    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("README.md", EXPORT_README)
+        archive.writestr("report.md", markdown_report(run))
+        archive.writestr("evidence.json", json.dumps(asdict(run), indent=2, allow_nan=False))
+        archive.writestr("investigation.ipynb", notebook(run))
         for e in run.evidence:
-            archive.writestr(f'charts/{e.id}.png', generate_plot(e))
-            archive.writestr(f'code/{e.id}.py', e.code)
+            for name, png in charts_for(e):
+                archive.writestr(f"charts/{name}", png)
+            archive.writestr(
+                f"code/{e.id}.py",
+                "# Untrusted generated source: use replay/ to execute safely.\n" + e.code if e.execution else e.code,
+            )
+            archive.writestr(f"replay/{e.id}.py", replay_code(e))
+        for record in run.executions:
+            archive.writestr(f"attempts/{record.id}.json", json.dumps(asdict(record), indent=2, allow_nan=False))
     return output.getvalue()
