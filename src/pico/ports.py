@@ -9,6 +9,10 @@ class ModelClient(Protocol):
     def complete(self, system: str, context: dict, schema: dict | None = None) -> dict: ...
 
 
+class AnalysisModelClient(Protocol):
+    def generate_analysis(self, system: str, context: dict) -> dict: ...
+
+
 class ProposalPlanner(Protocol):
     def propose(self, run: Investigation) -> PythonProposal: ...
 

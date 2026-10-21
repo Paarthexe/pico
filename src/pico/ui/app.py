@@ -63,7 +63,7 @@ def main() -> None:
             except Exception as exc:
                 # The UI boundary reports unexpected failures; lower layers only catch
                 # errors they can handle. Never substitute host execution after failure.
-                status.update(label="Investigation could not finish", state="error")
+                status.update(label="Investigation could not finish", state="error", expanded=True)
                 st.error(f"{type(exc).__name__}: {exc}")
             else:
                 st.session_state.update(run=run, bundle=bundle, run_signature=signature)

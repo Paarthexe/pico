@@ -174,7 +174,7 @@ def test_generated_agent_repairs_real_execution_and_exports_provenance(sandbox):
     class RecordedModel:
         calls = 0
 
-        def complete(self, system, context, schema):
+        def generate_analysis(self, system, context):
             self.calls += 1
             if self.calls == 1:
                 source = "raise NameError('repair this fixture')"
@@ -223,3 +223,21 @@ def test_free_form_logistic_regression_example(sandbox):
     assert result.result["n"] == int(frame[["income", "purchases", "churn"]].notna().all(axis=1).sum())
     assert {row["term"] for row in result.result["table"]} == {"income", "purchases"}
     assert result.artifacts[0].name == "adjusted_churn.png"
+
+
+def test_container_helpers_serialize_aggregate_dataframes_and_numpy_scalars(sandbox):
+    source = """
+import numpy as np
+from pico_tools import load_dataset, save_result
+frame = load_dataset('/input/dataset.csv')
+assert frame.equals(load_dataset())
+save_result(n=len(frame), conclusion='Measured mean value.', limitations=['Synthetic sample.'],
+            table=frame.groupby('group')['value'].mean().reset_index(),
+            statistic=np.float64(frame['value'].mean()), method='Descriptive group means',
+            assumptions=['Independent rows unverified.'], diagnostics={'groups': np.int64(2)})
+"""
+    result = sandbox.execute(source, DATASET, 4)
+    assert result.status == "ok", (result.error, result.stderr)
+    assert result.result["statistic"] == 2.5
+    assert result.result["diagnostics"]["groups"] == 2
+    assert len(result.result["table"]) == 2

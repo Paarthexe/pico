@@ -125,7 +125,7 @@ def test_generated_exports_preserve_errors_and_replay_through_docker():
 
 def test_python_planner_validates_columns_and_source_and_passes_error_feedback():
     class Client:
-        def complete(self, system, context, schema):
+        def generate_analysis(self, system, context):
             self.context = context
             return self.answer
 

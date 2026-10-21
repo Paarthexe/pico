@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r /opt/requirements.txt \
     && mkdir /input /output \
     && chmod 755 /input /output
 COPY sandbox/worker.py /opt/pico-worker.py
+COPY sandbox/pico_tools.py /usr/local/lib/python3.12/site-packages/pico_tools.py
 USER 65532:65532
 WORKDIR /output
 ENTRYPOINT ["python", "-I", "/opt/pico-worker.py"]

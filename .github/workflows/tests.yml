@@ -14,8 +14,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e '.[dev]'
-      - run: ruff check src tests app.py sandbox/worker.py examples
-      - run: ruff format --check src tests app.py sandbox/worker.py examples
+      - run: ruff check src tests scripts app.py sandbox examples
+      - run: ruff format --check src tests scripts app.py sandbox examples
       - run: pytest -q -m 'not docker'
         env:
           MPLBACKEND: Agg
@@ -33,3 +33,28 @@ jobs:
         env:
           PICO_RUN_DOCKER_TESTS: '1'
           MPLBACKEND: Agg
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: pip install -e '.[dev]'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-validation
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

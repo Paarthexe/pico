@@ -1,0 +1,6 @@
+{
+  "name": "pico-browser-checks",
+  "private": true,
+  "scripts": {"test:browser": "playwright test"},
+  "devDependencies": {"@playwright/test": "^1.56.0", "@axe-core/playwright": "^4.10.2"}
+}

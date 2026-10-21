@@ -116,7 +116,11 @@ def evidence_card(evidence: Evidence) -> None:
                 if review.adjusted_tests:
                     st.dataframe(pd.DataFrame(review.adjusted_tests), hide_index=True, width="stretch")
         for name, data in charts_for(evidence):
-            st.image(data, caption=name if evidence.execution else None)
+            st.image(
+                data,
+                caption=name if evidence.execution else None,
+                alt=f"{evidence.id}: {evidence.hypothesis['x']} and {evidence.hypothesis['y']}. {evidence.conclusion} Numerical values are in the evidence table.",
+            )
         with st.expander("Evidence, limitations, and source code"):
             st.dataframe(pd.DataFrame(evidence.table), hide_index=True, width="stretch")
             for caveat in evidence.limitations:

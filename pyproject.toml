@@ -7,7 +7,7 @@ name = "pico-eda"
 version = "0.1.0"
 description = "Hypothesis-driven exploratory data analysis"
 requires-python = ">=3.11"
-dependencies = ["pandas>=2.2,<4", "numpy>=2,<3", "scipy>=1.14,<2", "matplotlib>=3.9,<4", "streamlit>=1.50,<2", "pillow>=10,<13"]
+dependencies = ["pandas>=2.2,<4", "numpy>=2,<3", "scipy>=1.14,<2", "matplotlib>=3.9,<4", "streamlit>=1.66,<2", "pillow>=10,<13"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.11,<1"]

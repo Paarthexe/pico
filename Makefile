@@ -8,8 +8,8 @@ run:
 test:
 	$(PYTHON) -m pytest -q -m 'not docker'
 lint:
-	$(PYTHON) -m ruff check src tests app.py sandbox/worker.py examples
-	$(PYTHON) -m ruff format --check src tests app.py sandbox/worker.py examples
+	$(PYTHON) -m ruff check src tests scripts app.py sandbox examples
+	$(PYTHON) -m ruff format --check src tests scripts app.py sandbox examples
 sandbox-image:
 	docker build -f sandbox/Dockerfile -t pico-sandbox:1 .
 test-sandbox:
