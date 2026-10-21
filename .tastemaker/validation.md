@@ -9,3 +9,10 @@
 - Palette contrast contract recorded in style-lock.md.
 - Project style lock and pending decision log added. No personal profile promotion.
 - Streamlit native controls used; React registries are incompatible with this Python stack.
+
+## Generated Python extension
+
+- Reused the locked palette and native Streamlit controls, with styles extracted into ui/styles.css.
+- AppTest covers engine selection, model/engine settings invalidation, and unavailable Docker errors.
+- Added execution logs/source to evidence and failed attempts to the investigation trail.
+- No new browser visual review or personal profile promotion is claimed.

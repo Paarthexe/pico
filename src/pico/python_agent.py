@@ -10,6 +10,7 @@ from pico.config import EXPLORATORY_CAVEAT, MULTIPLE_TESTING_CAVEAT
 from pico.models import Evidence, ExecutionRecord, Hypothesis, Investigation, PythonProposal
 from pico.ollama import PlannerError
 from pico.planning import PythonPlanner
+from pico.ports import ProposalPlanner, PythonExecutor
 from pico.sandbox import DockerSandbox
 from pico.sandbox.protocol import validate_result
 
@@ -43,7 +44,12 @@ def evidence_from_execution(record: ExecutionRecord, proposal: PythonProposal, d
 
 
 def python_loop(
-    df: pd.DataFrame, run: Investigation, emit: Callable[[str, str], None], *, executor=None, planner=None
+    df: pd.DataFrame,
+    run: Investigation,
+    emit: Callable[[str, str], None],
+    *,
+    executor: PythonExecutor | None = None,
+    planner: ProposalPlanner | None = None,
 ) -> None:
     executor = executor or DockerSandbox()
     planner = planner or PythonPlanner(run.model)

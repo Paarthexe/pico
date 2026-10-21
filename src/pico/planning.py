@@ -7,6 +7,7 @@ import pandas as pd
 from pico.config import MAX_CODE_BYTES
 from pico.models import Evidence, Hypothesis, Investigation, PythonProposal
 from pico.ollama import OllamaClient, PlannerError
+from pico.ports import ModelClient
 
 
 def choose_target(df: pd.DataFrame, question: str = "") -> str:
@@ -140,7 +141,7 @@ PYTHON_SCHEMA = dict(
 
 
 class PythonPlanner:
-    def __init__(self, model: str, client: OllamaClient | None = None):
+    def __init__(self, model: str, client: ModelClient | None = None):
         self.client = client or OllamaClient(model)
 
     def propose(self, run: Investigation) -> PythonProposal:

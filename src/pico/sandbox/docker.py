@@ -97,8 +97,13 @@ class DockerSandbox:
             details = json.loads(info.stdout)
             if details.get("OSType") != "linux":
                 raise SandboxUnavailable("Pico requires Linux containers.")
-            if not any("name=seccomp" in item for item in details.get("SecurityOptions", [])):
-                raise SandboxUnavailable("Docker seccomp support is required for generated Python.")
+            if not any("name=seccomp,profile=builtin" == item for item in details.get("SecurityOptions", [])):
+                raise SandboxUnavailable("Docker's built-in seccomp profile is required for generated Python.")
+            if not all(
+                details.get(capability) is True
+                for capability in ["MemoryLimit", "SwapLimit", "PidsLimit", "CpuCfsQuota"]
+            ):
+                raise SandboxUnavailable("Docker must support memory, swap, process, and CPU quota limits.")
             image = self._control("image", "inspect", "--format", "{{.Id}}", self.image)
             identifier = image.stdout.decode().strip()
             if image.returncode or not re.fullmatch(r"sha256:[a-f0-9]{64}", identifier):
@@ -113,6 +118,8 @@ class DockerSandbox:
         """Only read-only inputs are mounted; all writable space is size-limited tmpfs."""
         if self._image_id is None:
             raise SandboxUnavailable("Verify the sandbox before creating a container.")
+        if "," in str(input_directory):
+            raise SandboxUnavailable("Docker input paths cannot contain commas.")
         limits = self.limits
         return [
             self.binary,
@@ -123,6 +130,7 @@ class DockerSandbox:
             "--init",
             "--network=none",
             "--ipc=none",
+            "--cgroupns=private",
             "--read-only",
             "--cap-drop=ALL",
             "--security-opt=no-new-privileges=true",
@@ -136,7 +144,9 @@ class DockerSandbox:
             "--ulimit=core=0:0",
             "--log-driver=none",
             "--mount",
-            f"type=bind,src={input_directory},dst=/input,readonly",
+            f"type=bind,src={input_directory / 'dataset.csv'},dst=/input/dataset.csv,readonly",
+            "--mount",
+            f"type=bind,src={input_directory / 'analysis.py'},dst=/input/analysis.py,readonly",
             "--tmpfs",
             f"/output:rw,noexec,nosuid,nodev,size={limits.output_mb}m,uid=65532,gid=65532,mode=700",
             "--tmpfs",
@@ -171,8 +181,13 @@ class DockerSandbox:
         record = ExecutionRecord(execution_id, code, "error", 0, image=self._image_id)
         # No artifact files are copied to the host. Only bounded JSON/PNG bytes return.
         with TemporaryDirectory(prefix="pico-input-") as directory:
-            inputs = Path(directory)
-            inputs.chmod(0o755)
+            # macOS exposes /var as /private/var, while Linux VM file shares
+            # use the canonical path. Bind the path actually shared with Docker.
+            inputs = Path(directory).resolve()
+            # The parent stays private on the host. Docker mounts individual files,
+            # so its unprivileged child can read them without exposing the directory
+            # to other local users.
+            inputs.chmod(0o700)
             for filename, contents in [("dataset.csv", dataset), ("analysis.py", code.encode())]:
                 path = inputs / filename
                 path.write_bytes(contents)

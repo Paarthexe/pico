@@ -11,6 +11,7 @@ from pico.models import Evidence, Investigation
 from pico.ollama import PlannerError
 from pico.planning import choose_target as choose_target
 from pico.planning import follow_up, ollama_choice, ranked_candidates
+from pico.ports import ProposalPlanner, PythonExecutor
 
 EventCallback = Callable[[str, str], None]
 
@@ -80,8 +81,8 @@ def investigate(
     on_event: EventCallback | None = None,
     *,
     engine: str = "catalog",
-    executor=None,
-    planner=None,
+    executor: PythonExecutor | None = None,
+    planner: ProposalPlanner | None = None,
 ) -> Investigation:
     if type(budget) is not int or not 1 <= budget <= MAX_INVESTIGATIONS:
         raise ValueError(f"Investigation budget must be between 1 and {MAX_INVESTIGATIONS}.")

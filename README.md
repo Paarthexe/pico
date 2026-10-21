@@ -2,7 +2,7 @@
 
 **Pattern Investigation and Computational Observation agent**
 
-Pico is a hypothesis-driven CSV analyst. It profiles an unfamiliar dataset, selects an investigation, evaluates executed evidence, and uses the result to choose a follow-up. Every finding includes a chart, sample size, caveats, and replay code.
+Pico explores CSV datasets through an observe → hypothesize → execute → evaluate → replan loop. Choose trusted statistical tools or let a local model write new Python analyses and run them in disposable, restricted Docker containers. Findings retain numerical evidence, charts, code, execution logs, and limitations.
 
 ## Run locally
 
@@ -15,60 +15,75 @@ pip install -e '.[dev]'
 streamlit run app.py
 ```
 
-Open http://localhost:8501. The synthetic customer dataset is enabled initially; upload a CSV and disable the demo toggle to analyze your own data. CSV limits: UTF-8, 20 MB, 100,000 rows, 100 columns.
+Open http://localhost:8501. The synthetic customer dataset is enabled initially. For your data, upload a UTF-8 CSV and disable the demo toggle. Limits: 20 MB, 100,000 rows, 100 columns.
 
-## Try the investigative loop
+## Generated Python with isolated execution
 
-1. Keep the demo dataset and select `churn` as the outcome.
-2. Use the five-analysis budget and start an investigation.
-3. Open the investigation trail. An income/churn association prompts Pico to compare the relationship within purchase-frequency strata.
-4. Compare the aggregate and stratified evidence. The synthetic data was constructed with purchase frequency affecting churn and income associated with purchase frequency. The stratified comparison is descriptive and does not establish a causal mechanism.
-5. Download the investigation bundle for the report, charts, JSON evidence, replay scripts, and Jupyter notebook.
+1. Install/start Docker with Linux containers and seccomp support.
+2. Build the worker image from the project root:
 
-The default planner is deterministic and works without a model or credentials. It prioritizes numeric predictors and generates a follow-up when an executed categorical association has Cramér’s V of at least 0.1. It remembers tested hypotheses, enforces a budget of at most five attempts (including failures), and skips invalid analyses with a visible reason. The default rules use the selected outcome; arbitrary question text does not change their ranking.
+   ```sh
+   docker build -f sandbox/Dockerfile -t pico-sandbox:1 .
+   ```
 
-## Optional local LLM planner
+3. Install/start [Ollama](https://docs.ollama.com/) and pull a model you want to use. Enter its installed name in Pico.
+4. Select **Generated Python (Docker)** as the analysis engine, choose an outcome, and start an investigation.
 
-Install and run [Ollama](https://docs.ollama.com/), pull a model of your choice, select **Ollama local model**, and enter its installed model name. Pico calls the local [chat API](https://docs.ollama.com/api/chat) at `127.0.0.1:11434`, requests JSON, and validates the selected hypothesis index. The model chooses from eligible tools using the question, schema, aggregate profile, and prior aggregate evidence. Raw CSV rows are not sent to the model. Invalid responses or connection failures fall back to the local rules and appear in the trail.
+Pico asks the model for a hypothesis and Python source, then sends that source to the worker. It can use pandas, NumPy, SciPy, Matplotlib, Seaborn, statsmodels, and scikit-learn, including analyses outside the catalog. Results and execution failures inform the next hypothesis or code repair, within the selected budget of at most five attempts. Successful source is not executed twice. Invalid model output stops with a visible reason; invalid/runtime-failed code remains in the trail and is returned to the model for repair.
 
-The request has a 45-second network timeout per planning call. This is not a hard generation-time budget on the model server. The live Ollama integration requires a running local model; automated tests cover the request/response contract and fallback behavior.
+Each attempt uses no network, a non-root user, read-only inputs/root, size-limited writable temporary space, no capabilities or new privileges, and CPU, memory, process, file, output, and wall-time limits. The container and its descendants are removed after every attempt. Generated code never runs in the Streamlit host or notebook kernel. Missing Docker/image, unsupported isolation, and failed cleanup stop execution; there is no fallback to host execution.
 
-## Analysis tools and statistical limits
+Docker must be able to bind the canonical host temporary directory. On macOS with Colima, share that directory read-only when starting its VM; see [architecture and setup details](docs/architecture.md#data-and-resource-handling). The worker is intended for a local analyst workspace; stronger multi-user deployment controls are outside this app.
 
-- CSV profiling: inferred numeric/categorical types, missingness, duplicates, constants, distinct counts, numeric quartiles/IQR outliers, and largest category share.
-- Numeric/numeric: Spearman correlation.
-- Categorical outcome: quartile/category contingency tables, chi-square, and Cramér’s V.
-- Numeric outcome by category: Kruskal–Wallis and descriptive group summaries.
-- Missingness versus categorical outcome.
-- Follow-up: within-stratum category comparisons with weighted Cramér’s V; no pooled p-value is claimed.
+The model receives schema, aggregate profile/findings, previously generated source, and execution error excerpts through the local [Ollama chat API](https://docs.ollama.com/api/chat). Raw CSV rows are not deliberately included in prompts, but result/error text can contain dataset values. The container receives only its dataset snapshot and source. No credentials or general host environment are forwarded.
 
-P-values are raw and exploratory. Adaptive hypothesis selection, multiple comparisons, sparse expected cells, missing observations, potential identifiers/leakage, and dataset-specific measurement issues limit interpretation. The app reports sparse-cell and small-sample warnings. It does not infer causation, identify time-series semantics, or fit multivariable causal models. Validate candidate findings on independent data.
+## Try free-form Python without a model
 
-## Execution boundary
+The executor is also a Python API. This example fits an adjusted logistic regression and saves a chart for the synthetic dataset, entirely inside Docker:
 
-This MVP deliberately uses a fixed catalog of trusted statistical Python tools. The model can select tools but cannot submit arbitrary Python. There is no `eval`, `exec`, shell execution, or model-generated code execution in the application. Replay files call those same installed tools.
+```python
+from pathlib import Path
+from pico.data import demo_dataset
+from pico.sandbox import DockerSandbox
 
-**Free-form generated Python and an isolated code-execution sandbox are not implemented.** If adding them, use a separate locked-down worker/container with network disabled, bounded resources, a read-only dataset mount, and a disposable output directory. Do not execute generated Python directly in the Streamlit host.
-
-Uploads live in application memory/session state; there is no database or deliberate upload persistence. The export excludes the original CSV, but includes evidence tables and up to 1,000 plotted pairs for numeric correlations, which can contain dataset values. Treat exported bundles as sensitive as their source data. This is a local MVP without production authentication or multi-user isolation.
-
-## Reproducibility and layout
-
-```text
-app.py                    Streamlit upload, health, evidence, and report UI
-src/pico/data.py          Ingestion, profiling, seeded synthetic dataset
-src/pico/analysis.py      Validated hypotheses and trusted analysis tools
-src/pico/agent.py         Plan → execute → evaluate → replan loop
-src/pico/report.py        Charts, Markdown, ZIP, and notebook exports
-tests/                    Statistical, planner, export, and UI regression tests
+frame = demo_dataset()
+result = DockerSandbox().execute(
+    Path('examples/adjusted_churn.py').read_text(),
+    frame.to_csv(index=False).encode(),
+    len(frame),
+)
+print(result.status, result.result, result.error, result.stderr)
 ```
 
-To replay an export, keep the original CSV as `dataset.csv`, install this project, and run its scripts or notebook. No CSV is bundled automatically. Rule-based demo runs are reproducible; LLM selections depend on the local model. Project design tokens and pending design decisions are recorded in `.tastemaker/`; no personal taste profile was modified.
+`examples/adjusted_churn.py` itself uses container paths and must not be run directly on the host. To author another analysis, read `/input/dataset.csv`, write `/output/result.json` with `n`, `conclusion`, `limitations`, a nonempty scalar evidence `table`, and optional finite `statistic`, `p_value`, `effect`. Save up to four PNGs in `/output`. stdout/stderr are diagnostics, not findings. The full contract is in [the planner prompt](src/pico/planning.py) and [protocol validator](src/pico/sandbox/protocol.py).
 
-## Validate
+## Catalog mode and demo
+
+**Catalog tools** works immediately without Docker or model credentials. Local rules rank candidates and investigate associations; optional Ollama selects hypotheses using your question and prior evidence. Local rules use the selected outcome rather than interpreting arbitrary question text.
+
+Keep the synthetic dataset, select `churn`, and use five attempts. An observed income/churn association leads to a comparison within purchase-frequency strata. The demo was constructed with purchase frequency affecting churn and income associated with purchase frequency. The stratified comparison is descriptive, not a causal estimate.
+
+Catalog analyses include Spearman correlation, category/quartile contingency tests and Cramér’s V, Kruskal–Wallis group comparisons, missingness associations, and within-stratum follow-ups. Profiling includes missingness, duplicates, constants, quartiles/IQR outliers, and category imbalance.
+
+## Reports and reproducibility
+
+Download a bundle with Markdown report, PNGs, structured evidence, source, safe replay scripts, Jupyter notebook, and all generated execution attempts, including failures. Generated-source files are labeled untrusted; replay scripts/notebooks call `DockerSandbox`. To replay, install Pico, build the image, and place the original CSV beside the exported notebook as `dataset.csv`.
+
+The original CSV is excluded. Evidence tables, correlation points, logs, generated source, and charts can still include source values; treat exports as sensitive as the dataset. Generated executions record the resolved worker image ID. Model choices depend on the local model; catalog demo runs are deterministic.
+
+All results are exploratory associations. Adaptive selection, multiple comparisons, sparse cells, missingness, possible leakage, and model assumptions limit inference. P-values are raw. Execution and schema validation do not establish statistical correctness or causation; validate candidate findings independently.
+
+## Development
 
 ```sh
-pytest -q
+pytest -q -m 'not docker'
+ruff check src tests app.py sandbox/worker.py examples
+ruff format --check src tests app.py sandbox/worker.py examples
+
+# Requires running Docker and the built image; explicitly enabled tests fail if unavailable.
+PICO_RUN_DOCKER_TESTS=1 pytest -q -m docker
 ```
 
-Tests cover ingestion limits, missingness, known correlations, evidence-driven replanning, budgets, model fallback, exports, and Streamlit's complete demo interaction. CI runs the same suite on Python 3.11 and 3.14. Browser screenshots require a connected browser; the initial implementation was validated through Streamlit AppTest, with no claim of browser visual QA.
+A Makefile provides matching `run`, `test`, `lint`, `sandbox-image`, and `test-sandbox` targets. CI checks formatting and unit/UI tests on Python 3.11/3.14 and executes real-container tests in a dedicated Linux job.
+
+The code separates domain records, model transport, planning policy, catalog methods, generated execution, protocol validation, UI/state, charts, and exports. See [architecture](docs/architecture.md) for responsibilities, resource limits, trust boundaries, and extension points.

@@ -94,8 +94,9 @@ def test_container_has_only_read_only_input_mount_and_enforced_limits():
         "--init",
     ]:
         assert flag in command
-    assert command.count("--mount") == 1
-    assert "type=bind,src=/tmp/inputs,dst=/input,readonly" in command
+    assert command.count("--mount") == 2
+    for filename in ["dataset.csv", "analysis.py"]:
+        assert f"type=bind,src=/tmp/inputs/{filename},dst=/input/{filename},readonly" in command
     assert not any("docker.sock" in arg or "privileged" in arg for arg in command)
     assert command[-3:] == ["-I", "/opt/pico-worker.py", "30"]
 
@@ -142,3 +143,80 @@ def test_limits_cannot_be_disabled():
     for kwargs in [dict(wall_seconds=0), dict(wall_seconds=float("inf")), dict(memory_mb=0), dict(pids=True)]:
         with pytest.raises(ValueError):
             SandboxLimits(**kwargs)
+
+
+def test_protocol_rejects_adversarial_status_unicode_and_huge_numbers(valid_result):
+    for status in [[], {}, None, 1]:
+        with pytest.raises(ProtocolError):
+            decode_response(json.dumps(dict(protocol_version=1, status=status)).encode(), 30)
+    for update in [dict(statistic=10**400), dict(conclusion="\ud800"), dict(table=[{"huge": 10**400}])]:
+        with pytest.raises(ProtocolError):
+            validate_result({**valid_result, **update}, 30)
+
+
+def test_cancellation_still_removes_container(monkeypatch):
+    sandbox = DockerSandbox()
+    sandbox._image_id = "sha256:" + "a" * 64
+    calls = []
+
+    def control(*args):
+        calls.append(args)
+        if args[0] == "create":
+            mounts = [arg for arg in args if arg.startswith("type=bind,")]
+            staged = Path(mounts[0].split("src=", 1)[1].split(",", 1)[0])
+            assert staged.parent.stat().st_mode & 0o777 == 0o700
+        return subprocess.CompletedProcess(args, 0, b"id", b"")
+
+    def cancelled(*args):
+        raise KeyboardInterrupt()
+
+    sandbox._control = control
+    monkeypatch.setattr("pico.sandbox.docker._capture", cancelled)
+    with pytest.raises(KeyboardInterrupt):
+        sandbox.execute("print(1)", b"x\n1\n", 1)
+    assert calls[-1][:2] == ("rm", "--force")
+
+
+def test_unsafe_daemon_configuration_fails_closed(monkeypatch):
+    monkeypatch.setattr("pico.sandbox.docker.shutil.which", lambda _: "docker")
+    capabilities = dict(
+        OSType="linux",
+        SecurityOptions=["name=seccomp,profile=builtin"],
+        MemoryLimit=True,
+        SwapLimit=True,
+        PidsLimit=True,
+        CpuCfsQuota=True,
+    )
+    sandbox = DockerSandbox()
+    for changed in [
+        dict(SecurityOptions=["name=seccomp,profile=unconfined"]),
+        dict(MemoryLimit=False),
+        dict(PidsLimit=False),
+        dict(OSType="windows"),
+    ]:
+        sandbox._control = lambda *args: subprocess.CompletedProcess(
+            args, 0, json.dumps({**capabilities, **changed}).encode(), b""
+        )
+        with pytest.raises(SandboxUnavailable):
+            sandbox.check_available()
+
+
+def test_supported_daemon_resolves_an_immutable_local_image(monkeypatch):
+    monkeypatch.setattr("pico.sandbox.docker.shutil.which", lambda _: "docker")
+    details = dict(
+        OSType="linux",
+        SecurityOptions=["name=seccomp,profile=builtin"],
+        MemoryLimit=True,
+        SwapLimit=True,
+        PidsLimit=True,
+        CpuCfsQuota=True,
+    )
+    sandbox = DockerSandbox()
+
+    def control(*args):
+        data = json.dumps(details).encode() if args[0] == "info" else ("sha256:" + "a" * 64).encode()
+        return subprocess.CompletedProcess(args, 0, data, b"")
+
+    sandbox._control = control
+    sandbox.check_available()
+    assert sandbox._image_id == "sha256:" + "a" * 64

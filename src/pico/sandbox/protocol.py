@@ -15,6 +15,7 @@ from pico.config import (
     MAX_ARTIFACTS,
     MAX_LOG_BYTES,
     MAX_PROTOCOL_BYTES,
+    MAX_RESULT_BYTES,
     PROTOCOL_VERSION,
 )
 from pico.models import Artifact
@@ -25,14 +26,31 @@ class ProtocolError(ValueError):
 
 
 def _text(value, label: str, maximum: int) -> str:
-    if not isinstance(value, str) or len(value.encode()) > maximum:
+    try:
+        valid = isinstance(value, str) and len(value.encode()) <= maximum
+    except UnicodeError:
+        valid = False
+    if not valid:
         raise ProtocolError(f"Invalid {label}.")
     return value
+
+
+def _finite(value: object) -> bool:
+    try:
+        return type(value) in {int, float} and math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def validate_result(value: object, dataset_rows: int) -> dict:
     if not isinstance(value, dict):
         raise ProtocolError("result.json must contain a JSON object.")
+    try:
+        size = len(json.dumps(value, allow_nan=False).encode())
+    except (ValueError, TypeError, RecursionError, OverflowError) as exc:
+        raise ProtocolError("Result contains non-JSON values.") from exc
+    if size > MAX_RESULT_BYTES:
+        raise ProtocolError("Result exceeded 256 KB.")
     n = value.get("n")
     if type(n) is not int or not 1 <= n <= dataset_rows:
         raise ProtocolError("Result n must be a positive integer no greater than dataset rows.")
@@ -56,13 +74,13 @@ def validate_result(value: object, dataset_rows: int) -> dict:
                 continue
             if isinstance(cell, str):
                 _text(cell, "table cell", 2000)
-            elif type(cell) not in {int, float} or not math.isfinite(cell):
+            elif not _finite(cell):
                 raise ProtocolError("Evidence table values must be finite JSON scalars.")
     result = dict(n=n, conclusion=conclusion, limitations=limitations, table=table)
     for field in ["statistic", "p_value", "effect"]:
         number = value.get(field)
         if number is not None:
-            if type(number) not in {int, float} or not math.isfinite(number):
+            if not _finite(number):
                 raise ProtocolError(f"Invalid {field}: expected a finite number or null.")
             if field == "p_value" and not 0 <= number <= 1:
                 raise ProtocolError("p_value must be between 0 and 1.")
@@ -110,11 +128,15 @@ def decode_response(raw: bytes, dataset_rows: int) -> tuple[dict, list[Artifact]
         raise ProtocolError("Sandbox response exceeded its size limit.")
     try:
         value = json.loads(raw)
-    except (ValueError, UnicodeError) as exc:
+    except (ValueError, UnicodeError, RecursionError) as exc:
         raise ProtocolError("Sandbox did not return valid JSON.") from exc
-    if not isinstance(value, dict) or value.get("protocol_version") != PROTOCOL_VERSION:
+    if (
+        not isinstance(value, dict)
+        or type(value.get("protocol_version")) is not int
+        or value.get("protocol_version") != PROTOCOL_VERSION
+    ):
         raise ProtocolError("Unsupported sandbox protocol.")
-    if value.get("status") not in {"ok", "error", "timeout"}:
+    if not isinstance(value.get("status"), str) or value.get("status") not in {"ok", "error", "timeout"}:
         raise ProtocolError("Invalid sandbox status.")
     for field in ["stdout", "stderr"]:
         _text(value.get(field, ""), field, MAX_LOG_BYTES)

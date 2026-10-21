@@ -1,7 +1,9 @@
 name: Test Pico
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -12,6 +14,22 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e '.[dev]'
-      - run: pytest -q
+      - run: ruff check src tests app.py sandbox/worker.py examples
+      - run: ruff format --check src tests app.py sandbox/worker.py examples
+      - run: pytest -q -m 'not docker'
         env:
+          MPLBACKEND: Agg
+  sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e '.[dev]'
+      - run: docker build -f sandbox/Dockerfile -t pico-sandbox:1 .
+      - run: pytest -q -m docker
+        env:
+          PICO_RUN_DOCKER_TESTS: '1'
           MPLBACKEND: Agg
