@@ -71,9 +71,11 @@ def python_loop(
             return
         digest = hashlib.sha256(proposal.code.encode()).hexdigest()
         if digest in successful_sources:
-            emit("Plan", "Model repeated a completed analysis; stopping to avoid duplicate findings.")
-            run.stop_reason = "Model repeated a completed analysis."
-            return
+            emit(
+                "Plan revision",
+                "The proposal repeats a completed analysis and was not executed. Choose a new relationship or a deeper control-variable comparison, not the same source with cosmetic edits.",
+            )
+            continue
         emit("Investigate", proposal.hypothesis)
         record = executor.execute(proposal.code, dataset, len(df), f"A{index:02}")
         run.executions.append(record)

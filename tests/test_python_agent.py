@@ -84,7 +84,7 @@ def test_python_loop_does_not_repeat_successful_source():
         planner=FakePlanner(["same code", "same code"]),
     )
     assert len(run.evidence) == 1
-    assert "repeated" in run.stop_reason
+    assert any(event["stage"] == "Plan revision" for event in run.activity)
 
 
 def test_missing_sandbox_never_generates_or_executes_code():
@@ -144,3 +144,14 @@ def test_python_planner_validates_columns_and_source_and_passes_error_feedback()
     client.answer["code"] = "x" * 70000
     with pytest.raises(PlannerError):
         planner.propose(run)
+
+
+def test_duplicate_proposal_can_be_revised_within_remaining_budget():
+    executor = FakeExecutor(("ok", "ok"))
+    planner = FakePlanner(["first code", "first code", "different code"])
+    run = investigate(
+        demo_dataset(), "churn", budget=3, model="test", engine="python", executor=executor, planner=planner
+    )
+    assert [e.id for e in run.evidence] == ["A01", "A03"]
+    assert executor.calls == ["first code", "different code"]
+    assert any(e["stage"] == "Plan revision" for e in planner.contexts[2]["activity"])

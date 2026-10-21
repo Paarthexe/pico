@@ -36,3 +36,19 @@ def test_model_limit_and_invalid_output_are_explicit(monkeypatch):
     monkeypatch.setenv("PICO_OLLAMA_TIMEOUT_SECONDS", "0")
     with pytest.raises(PlannerError, match="timeout"):
         OllamaClient("fixture")
+
+
+def test_successful_analysis_becomes_followup_context_not_a_repair_request(monkeypatch):
+    def fake_open(request, timeout):
+        message = json.loads(request.data)["messages"][1]["content"]
+        assert "FOLLOW-UP" in message
+        assert "old completed source" not in message
+        assert "ERROR TO FIX" not in message
+        content = '{"hypothesis":"New question","x":"x","y":"outcome"}\n```python\nprint(2)\n```'
+        return BytesIO(json.dumps({"message": {"content": content}}).encode())
+
+    monkeypatch.setattr("pico.ollama.urlopen", fake_open)
+    result = OllamaClient("fixture").generate_analysis(
+        "system", dict(attempts=[dict(code="old completed source", status="ok")])
+    )
+    assert result["code"] == "print(2)"

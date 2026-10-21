@@ -53,7 +53,7 @@ def sidebar() -> Options:
         else:
             use_model = st.selectbox("Planner", ["Local adaptive rules", "Ollama local model"]) == "Ollama local model"
         model = (
-            st.text_input("Ollama model", value=os.environ.get("PICO_OLLAMA_MODEL", "qwen2.5-coder:3b"))
+            st.text_input("Ollama model", value=os.environ.get("PICO_OLLAMA_MODEL", "qwen2.5-coder:7b"))
             if use_model
             else None
         )

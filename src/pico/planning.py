@@ -76,6 +76,8 @@ def aggregate_context(run: Investigation) -> dict:
                 p=e.p_value,
                 n=e.n,
                 review=asdict(e.review) if e.review else None,
+                method=e.method,
+                diagnostics=e.diagnostics,
             )
             for e in run.evidence
         ],
@@ -137,6 +139,10 @@ multiple testing, and leakage when relevant. Do not fabricate measurements.
 This is statistical investigation, not a machine-learning prediction benchmark.
 Do not train classifiers or split train/test sets unless the user's question explicitly asks for prediction.
 Use counts, not rates or continuous-valued pivot tables, as inputs to chi-square tests.
+Never make one category per unique continuous numeric value. Use numeric group comparisons or quantile bins.
+For chi-square diagnostics report min_expected_count=float(expected.min()), not the whole expected-count matrix.
+Never include row/column totals in the data passed to a chi-square test.
+Compute numerical conclusions from results. A nonsignificant p-value means insufficient evidence, not no association.
 After a failed attempt, prefer a simpler test instead of extending the failed pipeline.
 Run ONE focused analysis per attempt. Prefer concise code (under 80 lines), not a whole EDA pipeline.
 Use actual category labels in profile.schema.categories; never guess category values or numeric encodings.
@@ -176,6 +182,10 @@ class PythonPlanner:
 
     def propose(self, run: Investigation) -> PythonProposal:
         context = aggregate_context(run)
+        context["investigation_stage"] = "follow_up" if run.evidence else "initial"
+        context["planner_feedback"] = [event["message"] for event in run.activity if event["stage"] == "Plan revision"][
+            -2:
+        ]
         context["attempts"] = [
             dict(id=e.id, code=e.code, status=e.status, error=e.error, stderr=e.stderr[-2000:])
             for e in run.executions[-2:]

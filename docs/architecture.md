@@ -20,13 +20,14 @@ plotting.py handles catalog figures or returned PNGs; report.py packages both.
 - `config.py`: application budgets, resource configuration, and output limits.
 - `data.py`: validated CSV ingestion, profiling, and deterministic demo data.
 - `analysis.py`: trusted statistical method registry and common evidence finalization. Add a catalog method by implementing a focused summary function and registering it.
+- `review.py`: investigation-wide Holm adjustment, leakage/data-quality heuristics, assumption checks, and unsupported-interpretation handling. Reviews are recomputed after each finding and supplied to subsequent model planning.
 - `planning.py`: candidate ranking, follow-up policy, model context, and generated-proposal validation. Planning never executes code.
-- `ollama.py`: local HTTP transport and bounded structured responses. Replace `ModelClient` to add another provider.
+- `ollama.py`: local HTTP transport, response limits/usage metadata, catalog JSON, and a short JSON hypothesis followed by plain Python source for code generation. Replace `ModelClient` to add another provider.
 - `agent.py`: public investigation entry point, input validation, and catalog orchestration.
 - `python_agent.py`: generated-code execution, failure feedback, duplicate-source protection, and saving only successful evidence. `ProposalPlanner` and `PythonExecutor` are injectable.
 - `sandbox/docker.py`: container lifecycle and bounded subprocess capture. Docker commands are argument lists; there is no host shell or host Python execution of generated code.
 - `sandbox/protocol.py`: validates untrusted result scalars, sample counts, log sizes, filenames, base64, and PNG content/dimensions before findings or exports can consume them.
-- `sandbox/worker.py`: standalone container entry point, child process, bounded file reads, and output serialization. It intentionally does not depend on the installed host package. Protocol version and limits are exercised by integration tests.
+- `sandbox/worker.py`: standalone container entry point, child process, bounded file reads, and output serialization. It intentionally does not depend on the installed host package. Protocol version and limits are exercised by integration tests. `sandbox/pico_tools.py` provides optional CSV/result conveniences inside the image; generated code remains arbitrary Python inside the same isolation boundary. Numeric diagnostic arrays are summarized into finite min/max/size scalars, enabling sparse-cell checks without relaxing the host protocol.
 - `ui/`: native Streamlit presentation, styles, and session state. A result is stale whenever dataset, question, target, budget, model, or engine changes.
 - `plotting.py` and `report.py`: one chart interface and safe replay wrappers for both engines. Generated code is source text passed to Docker in exported notebooks, not executed by the notebook kernel.
 
@@ -53,10 +54,20 @@ Inputs are briefly written to disposable host temporary files; outputs remain on
 
 The Docker daemon must be able to bind-mount the host's canonical temporary directory. Docker Desktop normally shares macOS temporary paths. For Colima, share the directory shown by `python -c 'import tempfile,pathlib; print(pathlib.Path(tempfile.gettempdir()).resolve())'` when starting the VM, read-only. Remote Docker daemons without access to those input paths are unsupported.
 
-Execution defaults: 45 seconds wall time, 30 seconds CPU per process, one CPU core, 768 MB memory with no extra swap, 64 processes, 32 MB output tmpfs, 64 MB temporary tmpfs, 8 MB per file, 128 file descriptors, and no core dumps. Container setup/cleanup have separate bounded CLI timeouts. Model HTTP calls have a separate 45-second network timeout. Overrides can only stay within validated bounds.
+Execution defaults: 45 seconds wall time, 30 seconds CPU per process, one CPU core, 768 MB memory with no extra swap, 64 processes, 32 MB output tmpfs, 64 MB temporary tmpfs, 8 MB per file, 128 file descriptors, and no core dumps. Container setup/cleanup have separate bounded CLI timeouts. Model HTTP calls have a separate configurable network timeout (180 seconds by default). Overrides can only stay within validated bounds.
 
 Output defaults: 64 KB source, 256 KB result JSON, 64 KB each stdout/stderr, four PNG charts up to 2 MB each/4 MB total and 8 million pixels each, and a bounded 7 MB transport response. Nonregular output files, symlinks, invalid images, nonfinite numbers, impossible n, nested table cells, and malformed JSON cannot become evidence.
 
 ## Verification
 
 Unit and Streamlit tests cover both engine selections, settings invalidation, provider errors, planner output, repair feedback, source deduplication, evidence provenance, safe export wrappers, and protocol rejection. Real Docker integration tests compute known values/charts and exercise no-network access, host/input/root restrictions, runtime errors, memory exhaustion, oversized files, symlink rejection, malformed results, and timeout/descendant cleanup. Explicitly enabling Docker tests fails if the runtime or image is unavailable; it never silently substitutes mocks or host execution.
+
+## Statistical policy
+
+Holm correction covers reported reliable primary p-values and explicit table p-values across the run. Duplicated reports are intentionally counted separately. The full family and adjusted values are retained. This does not remove adaptive selection bias, validate hidden/unreported comparisons, or make incorrect model assumptions valid.
+
+Identifier/outcome-copy exclusions and possible timing/leakage warnings are heuristics. Generated fits' diagnostics are self-reported. Nonconvergence, separation warnings, and reported sparse expected counts can invalidate p-values for review/adjustment. Unsupported causal, significance, absence, or univariate-confounding claims are flagged; the source interpretation remains available for audit.
+
+Small-sample Spearman uses a fixed-seed, bounded permutation test. Sparse 2×2 contingency tests use Fisher exact, while larger sparse tables expose descriptive results without a chi-square p-value. Kruskal–Wallis enforces the minimum group-size check. Independence/exchangeability must be established from collection context.
+
+Primary references: [SciPy Spearman caveats](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html), [Kruskal–Wallis assumptions](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kruskal.html), [Holm correction](https://www.statsmodels.org/stable/generated/statsmodels.stats.multitest.multipletests.html).

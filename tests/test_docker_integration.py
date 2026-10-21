@@ -234,10 +234,12 @@ assert frame.equals(load_dataset())
 save_result(n=len(frame), conclusion='Measured mean value.', limitations=['Synthetic sample.'],
             table=frame.groupby('group')['value'].mean().reset_index(),
             statistic=np.float64(frame['value'].mean()), method='Descriptive group means',
-            assumptions=['Independent rows unverified.'], diagnostics={'groups': np.int64(2)})
+            assumptions=['Independent rows unverified.'], diagnostics={'groups': np.int64(2), 'expected': np.array([[10., 3.], [5., 8.]])})
 """
     result = sandbox.execute(source, DATASET, 4)
     assert result.status == "ok", (result.error, result.stderr)
     assert result.result["statistic"] == 2.5
     assert result.result["diagnostics"]["groups"] == 2
+    assert result.result["diagnostics"]["expected_min"] == 3.0
+    assert result.result["diagnostics"]["expected_size"] == 4
     assert len(result.result["table"]) == 2

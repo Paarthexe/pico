@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -24,9 +25,22 @@ def save_result(
     diagnostics=None,
 ):
     if isinstance(table, pd.DataFrame):
+        if not isinstance(table.index, pd.RangeIndex) or table.index.name is not None:
+            table = table.reset_index()
         table = table.to_dict(orient="records")
     if not isinstance(table, list) or not 1 <= len(table) <= 1000:
         raise ValueError("Supply a nonempty aggregate evidence table with at most 1000 rows.")
+    normalized = {}
+    for name, value in (diagnostics or {}).items():
+        if isinstance(value, (list, tuple, np.ndarray)):
+            array = np.asarray(value)
+            if not array.size or array.dtype.kind not in "biuf" or not np.isfinite(array).all():
+                raise ValueError("Diagnostic arrays must contain finite numeric values.")
+            normalized.update(
+                {f"{name}_min": float(array.min()), f"{name}_max": float(array.max()), f"{name}_size": int(array.size)}
+            )
+        else:
+            normalized[name] = value
     result = dict(
         n=int(n),
         conclusion=str(conclusion),
@@ -37,7 +51,7 @@ def save_result(
         effect=effect,
         method=method,
         assumptions=assumptions or [],
-        diagnostics=diagnostics or {},
+        diagnostics=normalized,
     )
 
     def scalar(value):

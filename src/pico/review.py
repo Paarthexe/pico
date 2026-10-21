@@ -132,6 +132,12 @@ def _review_one(df: pd.DataFrame, run: Investigation, evidence: Evidence, review
             "generated_method",
             "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
         )
+        minimum = evidence.diagnostics.get("expected_min", evidence.diagnostics.get("min_expected_count"))
+        if type(minimum) in {int, float} and minimum < 5:
+            issue(
+                "sparse_expected",
+                f"Minimum expected cell count is {minimum:.3g}. Aggregate categories or use an appropriate exact test before interpreting a p-value.",
+            )
         if not evidence.method or not evidence.assumptions:
             issue("missing_diagnostics", "The generated analysis did not report its method and assumptions.")
     if evidence.n < 50:
@@ -158,6 +164,13 @@ def _review_one(df: pd.DataFrame, run: Investigation, evidence: Evidence, review
                 "The significance claim is not supported by a reliable primary p-value below 0.05 after adjustment.",
                 "blocking",
             )
+    if re.search(r"\bexplain", original.lower()) and "association between" in original.lower() and evidence.execution:
+        if not any(word in evidence.method.lower() for word in ["regression", "stratif", "adjusted"]):
+            issue(
+                "confounding_claim",
+                "A univariate comparison cannot establish whether a third variable explains another association.",
+                "blocking",
+            )
     if re.search(r"\b(?:no (?:association|relationship)|independent of)\b", original.lower()):
         issue("absence_claim", "A nonsignificant result does not establish absence of a relationship.", "blocking")
     review.status = "unsupported" if any(i["severity"] == "blocking" for i in review.issues) else "caution"
@@ -180,6 +193,10 @@ def review_investigation(df: pd.DataFrame, run: Investigation) -> None:
             failed_fit |= bool(
                 re.search(r"convergencewarning|perfectseparation|singular matrix", evidence.execution.stderr, re.I)
             )
+            if "chi" in evidence.method.lower():
+                expected_min = diagnostics.get("expected_min", diagnostics.get("min_expected_count"))
+                if type(expected_min) in {int, float} and expected_min < 5:
+                    failed_fit = True
             if failed_fit:
                 evidence.p_value_reliable = False
         original = evidence.review.original_conclusion if evidence.review else evidence.conclusion

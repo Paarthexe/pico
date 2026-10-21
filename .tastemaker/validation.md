@@ -16,3 +16,12 @@
 - AppTest covers engine selection, model/engine settings invalidation, and unavailable Docker errors.
 - Added execution logs/source to evidence and failed attempts to the investigation trail.
 - No new browser visual review or personal profile promotion is claimed.
+
+## Browser review and accessibility checks
+
+- Real isolated Chromium tested desktop at 1280×900 and responsive widths 320, 390, and 768px.
+- Five browser tests passed, including an actual investigation, report ZIP download, mobile findings, descriptive chart alternatives, and keyboard-focus navigation.
+- Axe WCAG 2 A/AA and 2.1 A/AA rules reported no violations in the tested stable states. This is scoped automated coverage, not full assistive-technology certification.
+- Fixed measured contrast failures in native captions, uploader hint text, and alert text. Preserved the locked palette; captions now use opaque muted text.
+- Desktop and mobile rendered screenshots were inspected. Charts retain numerical evidence tables for a readable alternative at narrow widths.
+- Project style lock and pending-review decision log updated. Personal profile unchanged.

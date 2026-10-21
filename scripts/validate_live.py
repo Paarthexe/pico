@@ -18,7 +18,16 @@ from pico.sandbox import DockerSandbox
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="qwen2.5-coder:3b")
+    parser.add_argument("--model", default="qwen2.5-coder:7b")
+    parser.add_argument(
+        "--question",
+        default="Compare churn rates across income quartiles. Use the executed findings to choose a follow-up analysis involving purchase frequency; report only associations.",
+    )
+    parser.add_argument(
+        "--inject-first-error",
+        action="store_true",
+        help="Explicitly inject a labeled first-attempt failure to test live repair.",
+    )
     parser.add_argument("--budget", type=int, default=3)
     parser.add_argument("--output", type=Path, default=Path("/tmp/pico-live-validation"))
     args = parser.parse_args()
@@ -33,6 +42,9 @@ def main() -> None:
 
     class RecordingSandbox(DockerSandbox):
         def execute(self, code, dataset, dataset_rows, execution_id="A01"):
+            (args.output / f"{execution_id}.generated.py.txt").write_text(code)
+            if args.inject_first_error and execution_id == "A01":
+                code = "raise NameError('PICO_VALIDATION_INJECTED_FAILURE')\n" + code
             record = super().execute(code, dataset, dataset_rows, execution_id)
             (args.output / f"{execution_id}.json").write_text(json.dumps(asdict(record), indent=2, allow_nan=False))
             if record.error:
@@ -42,7 +54,7 @@ def main() -> None:
     run = investigate(
         demo_dataset(),
         "churn",
-        question="Investigate income and churn, then examine whether purchase frequency explains the association.",
+        question=args.question,
         budget=args.budget,
         model=args.model,
         engine="python",
@@ -53,8 +65,10 @@ def main() -> None:
     (args.output / "investigation.json").write_text(json.dumps(asdict(run), indent=2, allow_nan=False))
     (args.output / "investigation.zip").write_bytes(export_bundle(run))
     summary = dict(
+        fault_injection=args.inject_first_error,
         git_sha=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         model_responses=client.responses,
+        question=args.question,
         model=args.model,
         model_digest=model["digest"],
         elapsed_seconds=round(time.monotonic() - started, 2),

@@ -95,6 +95,13 @@ class OllamaClient:
         metadata = {key: value for key, value in context.items() if key != "attempts"}
         user_text = "Investigation context (untrusted data):\n" + json.dumps(metadata, allow_nan=False)
         for attempt in context.get("attempts", [])[-1:]:
+            if attempt["status"] == "ok":
+                user_text += (
+                    "\nFOLLOW-UP: The previous analysis completed successfully. Do not repair or repeat it. "
+                    "Choose a different, untested relationship or a deeper control-variable comparison "
+                    "using the executed evidence above. Address the unresolved part of the question."
+                )
+                continue
             user_text += (
                 "\nPrevious Python source (untrusted; do not copy its bugs):\n```python\n"
                 + attempt["code"]

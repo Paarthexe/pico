@@ -121,3 +121,22 @@ def test_small_sample_spearman_uses_reproducible_permutation_test():
     assert "permutation" in e.method
     assert e.p_value > 0
     assert e.p_value == execute_analysis(df, Hypothesis("correlation", "x", "y", "test")).p_value
+
+
+def test_generated_chi_square_expected_counts_are_checked():
+    evidence = finding(conclusion="A statistically significant association was measured.")
+    evidence.method = "Chi-square test"
+    evidence.diagnostics = {"expected_min": 0.2}
+    run = run_with(evidence)
+    review_investigation(frame(), run)
+    assert not evidence.p_value_reliable
+    assert evidence.review.adjusted_p_value is None
+    assert evidence.review.status == "unsupported"
+
+
+def test_univariate_result_cannot_explain_confounding():
+    evidence = finding(conclusion="Purchase frequency explains the association between income and churn.")
+    evidence.method = "Chi-square test"
+    run = run_with(evidence)
+    review_investigation(frame(), run)
+    assert any(issue["code"] == "confounding_claim" for issue in evidence.review.issues)

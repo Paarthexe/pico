@@ -9,7 +9,9 @@ System: native Streamlit controls and Matplotlib charts; React registries do not
 ## Palette and color contract
 Generated with technical/light seed 71.
 Text #121c22, background #f0f9fe, surface #e6eff4, primary #017ca8,
-on-primary #ffffff, accent #516fb4, border #d6dfe4.
+on-primary #ffffff, accent #516fb4, border #d6dfe4, muted text #4d5b64.
+Caption opacity is 1; native caption/uploader hint alpha had failed browser contrast checks.
+Alert text uses the locked ink color for contrast against light state fills.
 Text/background 16.20:1, text/surface 14.83:1, white/primary 4.72:1.
 Accent/background 4.60:1. Primary/background 4.42:1: UI only, no small text.
 Hairline borders are decorative; focus uses primary with 4.42:1 against background.
