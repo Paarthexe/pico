@@ -109,7 +109,11 @@ def evidence_card(evidence: Evidence) -> None:
                 )
             with st.expander("Statistical review and assumptions"):
                 if review.original_conclusion != evidence.conclusion:
-                    st.caption("Original interpretation, flagged as unsupported:")
+                    st.caption(
+                        "Original model interpretation (flagged as unsupported):"
+                        if review.status == "unsupported"
+                        else "Original model interpretation (not independently verified):"
+                    )
                     st.text(review.original_conclusion)
                 for issue in review.issues:
                     st.write(f"• {issue['message']}")

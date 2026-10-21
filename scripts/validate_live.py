@@ -97,6 +97,16 @@ def main() -> None:
         ],
         conclusions=[e.conclusion for e in run.evidence],
         verification=[dict(id=e.id, **e.review.verification) for e in run.evidence if e.review],
+        reviews=[
+            dict(
+                id=e.id,
+                status=e.review.status,
+                original_conclusion=e.review.original_conclusion,
+                issues=e.review.issues,
+            )
+            for e in run.evidence
+            if e.review
+        ],
         activity=run.activity,
     )
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2))
@@ -107,10 +117,14 @@ def main() -> None:
         )
     if (
         args.require_verified
-        and sum(e.review.verification.get("status") == "matched" for e in run.evidence if e.review)
+        and sum(
+            e.review.verification.get("status") == "matched" and e.review.status != "unsupported"
+            for e in run.evidence
+            if e.review
+        )
         < args.minimum_findings
     ):
-        raise SystemExit("Live validation did not produce enough independently matched findings.")
+        raise SystemExit("Live validation needs independently matched findings without blocking review issues.")
 
 
 if __name__ == "__main__":

@@ -79,7 +79,7 @@ def markdown_report(run: Investigation) -> str:
                 "",
             ]
             if e.review.original_conclusion != e.conclusion:
-                lines += ["Original interpretation (flagged, not endorsed):", e.review.original_conclusion, ""]
+                lines += ["Original interpretation (not endorsed):", e.review.original_conclusion, ""]
             lines += [*[f"- {issue['message']}" for issue in e.review.issues], ""]
         for name, _ in charts_for(e):
             lines += [f"![{e.id} analysis chart](charts/{name})", ""]

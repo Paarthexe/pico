@@ -32,6 +32,17 @@ def feature_warnings(df: pd.DataFrame, target: str) -> list[dict]:
                 warnings.append(
                     dict(column=name, code="target_copy", message=f"{name} duplicates the observed outcome.")
                 )
+            elif 2 <= paired[name].nunique() <= 20 and 2 <= paired[target].nunique() <= 20:
+                mapping = paired.groupby(name, observed=True)[target].nunique()
+                inverse = paired.groupby(target, observed=True)[name].nunique()
+                if mapping.max() == inverse.max() == 1:
+                    warnings.append(
+                        dict(
+                            column=name,
+                            code="target_proxy",
+                            message=f"{name} is a one-to-one recoding of the observed outcome; check for target leakage.",
+                        )
+                    )
         if _POST_OUTCOME.search(name) or name.lower().startswith(target.lower() + "_"):
             warnings.append(
                 dict(
@@ -51,6 +62,18 @@ def dataset_warnings(df: pd.DataFrame, target: str) -> list[dict]:
             dict(column=None, code="duplicates", message=f"{duplicates} duplicate rows may violate independence.")
         )
     counts = df[target].value_counts()
+    if 2 <= len(counts) <= 20:
+        for column in df.columns:
+            if column != target and df[column].isna().any():
+                rates = df[column].isna().groupby(df[target], observed=True).mean()
+                if len(rates) >= 2 and rates.max() - rates.min() >= 0.2:
+                    warnings.append(
+                        dict(
+                            column=column,
+                            code="differential_missingness",
+                            message=f"Missing {column} values differ by at least 20 percentage points across outcome groups; complete-case selection may bias comparisons.",
+                        )
+                    )
     if 2 <= len(counts) <= 20 and (counts.min() < 10 or counts.max() / counts.sum() > 0.95):
         warnings.append(
             dict(
@@ -78,6 +101,8 @@ def holm_adjust(p_values: list[float]) -> list[float]:
 
 def _reported_tests(evidence: Evidence) -> list[tuple[str, float]]:
     if not evidence.p_value_reliable:
+        return []
+    if evidence.execution and evidence.review.verification.get("status") != "matched":
         return []
     tests = [("primary", evidence.p_value)] if evidence.p_value is not None else []
     if evidence.execution:
@@ -108,9 +133,12 @@ def _mentioned_columns(evidence: Evidence, names: set[str]) -> set[str]:
 
 
 def _asserts(text: str, pattern: str) -> bool:
-    for clause in re.split(r"[.!?;]", text.lower()):
+    for clause in re.split(r"[.!?;]|\b(?:but|however)\b", text.lower()):
         match = re.search(pattern, clause)
-        if match and not re.search(r"\b(?:not|no|never|without)\b", clause[max(0, match.start() - 40) : match.start()]):
+        if match and not re.search(
+            r"\b(?:not|no|never|without|insufficient|inconclusive|cannot|uncertain)\b",
+            clause[max(0, match.start() - 60) : match.start()],
+        ):
             return True
     return False
 
@@ -126,7 +154,7 @@ def _review_one(df: pd.DataFrame, run: Investigation, evidence: Evidence, review
     mentioned = _mentioned_columns(evidence, set(df.columns))
     for warning in run.dataset_warnings:
         if warning["column"] in mentioned or warning["column"] is None or warning["code"] == "imbalance":
-            blocking = warning["code"] in {"identifier", "target_copy"}
+            blocking = warning["code"] in {"identifier", "target_copy", "target_proxy"}
             issue(warning["code"], warning["message"], "blocking" if blocking else "warning")
     if evidence.execution:
         verification = review.verification
@@ -135,6 +163,11 @@ def _review_one(df: pd.DataFrame, run: Investigation, evidence: Evidence, review
             verification["reason"],
             "blocking" if verification["status"] == "failed" else "warning",
         )
+        if verification.get("status") == "matched":
+            issue(
+                "unadjusted_comparison",
+                "This comparison is unadjusted. Matching counts and p-values does not rule out confounding or establish causality.",
+            )
         issue(
             "generated_method",
             "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
@@ -173,8 +206,7 @@ def _review_one(df: pd.DataFrame, run: Investigation, evidence: Evidence, review
             )
     if (
         evidence.execution
-        and review.adjusted_p_value is not None
-        and review.adjusted_p_value >= 0.05
+        and (review.adjusted_p_value is None or review.adjusted_p_value >= 0.05)
         and _asserts(
             original,
             r"\b(?:is|are|was|were)\s+(?:(?:positively|negatively|strongly|weakly)\s+)?(?:associated|correlated|related)\b",
@@ -186,13 +218,15 @@ def _review_one(df: pd.DataFrame, run: Investigation, evidence: Evidence, review
             "blocking",
         )
     if re.search(r"\bexplain", original.lower()) and "association between" in original.lower() and evidence.execution:
-        if not any(word in evidence.method.lower() for word in ["regression", "stratif", "adjusted"]):
+        if review.verification.get("status") == "matched" or not any(
+            word in evidence.method.lower() for word in ["regression", "stratif", "adjusted"]
+        ):
             issue(
                 "confounding_claim",
                 "A univariate comparison cannot establish whether a third variable explains another association.",
                 "blocking",
             )
-    if re.search(r"\b(?:no (?:association|relationship)|independent of)\b", original.lower()):
+    if _asserts(original, r"\b(?:no (?:association|relationship)|independent of)\b"):
         issue("absence_claim", "A nonsignificant result does not establish absence of a relationship.", "blocking")
     review.status = "unsupported" if any(i["severity"] == "blocking" for i in review.issues) else "caution"
     evidence.conclusion = (
@@ -201,6 +235,15 @@ def _review_one(df: pd.DataFrame, run: Investigation, evidence: Evidence, review
         if review.status == "unsupported"
         else original
     )
+    if review.verification.get("status") == "matched":
+        adjusted = f"{review.adjusted_p_value:.4g}" if review.adjusted_p_value is not None else "excluded"
+        review.numerical_summary = (
+            f"{evidence.id}: independently matched {review.verification['recipe']}, n={evidence.n:,}; "
+            f"raw p={evidence.p_value:.4g}, Holm-adjusted p={adjusted}. "
+            "Exploratory, unadjusted comparison; matching arithmetic does not establish study validity."
+        )
+        if review.status != "unsupported":
+            evidence.conclusion = review.numerical_summary
 
 
 def review_investigation(df: pd.DataFrame, run: Investigation) -> None:
@@ -236,7 +279,7 @@ def review_investigation(df: pd.DataFrame, run: Investigation) -> None:
         method="Holm",
         family_size=len(tests),
         alpha=0.05,
-        scope="Reliable primary p-values and explicitly named table p-values across this run; repeated reports counted separately.",
+        scope="Trusted catalog tests and independently matched generated primary tests only; unverified generated tests are excluded.",
         limitation=ADAPTIVE_CAVEAT,
     )
     for evidence in run.evidence:

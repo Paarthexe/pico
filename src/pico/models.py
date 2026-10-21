@@ -53,6 +53,7 @@ class FindingReview:
     adjusted_tests: list[dict] = field(default_factory=list)
     issues: list[dict] = field(default_factory=list)
     verification: dict = field(default_factory=dict)
+    numerical_summary: str = ""
 
 
 @dataclass
