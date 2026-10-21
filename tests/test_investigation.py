@@ -59,7 +59,8 @@ def test_budget_and_constant_target():
 
 def test_invalid_model_choice_falls_back(monkeypatch):
     def fail(*args):
-        raise ValueError('bad model response')
+        from pico.ollama import PlannerError
+        raise PlannerError('bad model response')
     monkeypatch.setattr('pico.agent.ollama_choice', fail)
     run = investigate(demo_dataset(), 'churn', budget=1, model='invalid')
     assert len(run.evidence) == 1
@@ -115,7 +116,7 @@ def test_ollama_contract_and_rejected_index(monkeypatch):
         assert 'table' not in context
         return BytesIO(json.dumps({'message': {'content': json.dumps(answer)}}).encode())
 
-    monkeypatch.setattr('pico.agent.urlopen', fake_open)
+    monkeypatch.setattr('pico.ollama.urlopen', fake_open)
     assert ollama_choice(pool, run, 'test-model') == (0, answer['reason'])
     answer['index'] = True
     with pytest.raises(ValueError, match='invalid option'):

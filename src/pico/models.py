@@ -1,0 +1,80 @@
+"""Shared domain records; independent of UI, model providers, and execution engines."""
+from dataclasses import dataclass, field
+from typing import Literal
+
+AnalysisKind = Literal['correlation', 'groups', 'numeric_groups', 'missingness', 'stratified', 'python']
+ExecutionStatus = Literal['ok', 'error', 'timeout', 'output_limit', 'unavailable']
+
+
+@dataclass(frozen=True)
+class Hypothesis:
+    kind: AnalysisKind
+    x: str
+    y: str
+    reason: str
+    control: str | None = None
+
+    @property
+    def key(self) -> tuple[str, str, str, str | None]:
+        return self.kind, self.x, self.y, self.control
+
+
+@dataclass(frozen=True)
+class Artifact:
+    """Validated PNG stored inline so a completed run needs no container or temp files."""
+    name: str
+    data_base64: str
+    media_type: str = 'image/png'
+
+
+@dataclass
+class ExecutionRecord:
+    id: str
+    code: str
+    status: ExecutionStatus
+    duration_seconds: float
+    stdout: str = ''
+    stderr: str = ''
+    error: str | None = None
+    artifacts: list[Artifact] = field(default_factory=list)
+    result: dict | None = None
+    image: str | None = None
+
+
+@dataclass
+class Evidence:
+    id: str
+    hypothesis: dict
+    n: int
+    statistic: float | None
+    p_value: float | None
+    effect: float | None
+    conclusion: str
+    limitations: list[str]
+    table: list[dict]
+    code: str
+    error: str | None = None
+    execution: ExecutionRecord | None = None
+
+
+@dataclass(frozen=True)
+class PythonProposal:
+    hypothesis: str
+    code: str
+    x: str
+    y: str
+
+
+@dataclass
+class Investigation:
+    profile: dict
+    target: str
+    question: str
+    mode: str
+    budget: int
+    evidence: list[Evidence] = field(default_factory=list)
+    activity: list[dict] = field(default_factory=list)
+    stop_reason: str = ''
+    executions: list[ExecutionRecord] = field(default_factory=list)
+    engine: str = 'catalog'
+    model: str | None = None
