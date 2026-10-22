@@ -59,3 +59,19 @@ test('mobile findings, chart descriptions, and statistical review', async ({ pag
   await page.screenshot({ path: testInfo.outputPath('mobile-findings.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });
+
+for (const width of [390, 1280]) {
+  test(`study context controls at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await ready(page);
+    await page.getByText('Study context', { exact: true }).click();
+    await expect(page.getByText('Subject identifier', { exact: true })).toBeVisible();
+    await expect(page.getByText('Observation timestamp', { exact: true })).toBeVisible();
+    await expect(page.getByText('Outcome timestamp', { exact: true })).toBeVisible();
+    await expect(page.getByText('Columns recorded after the outcome', { exact: true })).toBeVisible();
+    await accessible(page, testInfo, `study-context-accessibility-${width}`);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+    await page.screenshot({ path: testInfo.outputPath(`study-context-${width}.png`), fullPage: true });
+    await page.locator('[data-testid="stExpander"]').filter({ hasText: 'Identify how rows were collected.' }).screenshot({ path: testInfo.outputPath(`study-panel-${width}.png`) });
+  });
+}

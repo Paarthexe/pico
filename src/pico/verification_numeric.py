@@ -66,6 +66,8 @@ def verify_numeric(df: pd.DataFrame, evidence: Evidence) -> dict:
                 a, b = paired[x].to_numpy(dtype=float), paired[y].to_numpy(dtype=float)
                 if a.std() == 0 or b.std() == 0:
                     raise ValueError("Constant variables cannot support this recipe.")
+                if any(v.std() < abs(v.mean()) * np.finfo(float).eps ** 0.75 for v in [a, b]):
+                    raise ValueError("Nearly constant variables are numerically unstable for this recipe.")
                 table = [dict(n=len(paired), x_mean=float(a.mean()), y_mean=float(b.mean()))]
                 if recipe == "pearson_r":
                     result = stats.pearsonr(a, b, alternative="two-sided")

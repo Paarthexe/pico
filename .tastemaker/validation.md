@@ -25,3 +25,5 @@
 - Fixed measured contrast failures in native captions, uploader hint text, and alert text. Preserved the locked palette; captions now use opaque muted text.
 - Desktop and mobile rendered screenshots were inspected. Charts retain numerical evidence tables for a readable alternative at narrow widths.
 - Project style lock and pending-review decision log updated. Personal profile unchanged.
+
+2026-10-22: Seven Chromium checks pass, including expanded study controls at 390/1280px and WCAG A/AA scans. Complete panels and host effect plot visually reviewed. Generic design scanners parse no Python files and are not coverage. Locked palette/type unchanged. No personal profile changes.

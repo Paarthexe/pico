@@ -1,0 +1,214 @@
+{
+  "fault_injection": false,
+  "git_sha": "157a9a79a6a5b3ef420cf7f78554b26c5f90968a",
+  "model_responses": [
+    {
+      "model": "qwen2.5-coder:7b",
+      "done_reason": "stop",
+      "prompt_eval_count": 1652,
+      "eval_count": 366,
+      "total_duration": 67226202708,
+      "load_duration": 5359029833,
+      "eval_duration": 41290640000
+    },
+    {
+      "model": "qwen2.5-coder:7b",
+      "done_reason": "stop",
+      "prompt_eval_count": 2856,
+      "eval_count": 373,
+      "total_duration": 61118784958,
+      "load_duration": 9311375,
+      "eval_duration": 44638708000
+    }
+  ],
+  "question": "Compute Pearson correlation of original numeric x and y, no binning. Recipe pearson_r with verification_missing complete_case and verification_bins 0. Use scipy.stats.pearsonr; report its statistic and pvalue. Return a single summary row with n, x_mean and y_mean. The host will compute the Fisher-z 95% interval. Describe uncertainty; do not claim causality.",
+  "model": "qwen2.5-coder:7b",
+  "model_digest": "dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364",
+  "elapsed_seconds": 131.97,
+  "engine": "python",
+  "attempts": 2,
+  "findings": 2,
+  "stop_reason": "Reached the 2-analysis budget.",
+  "executions": [
+    {
+      "id": "A01",
+      "status": "ok",
+      "error": null,
+      "duration": 1.599,
+      "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+      "charts": []
+    },
+    {
+      "id": "A02",
+      "status": "ok",
+      "error": null,
+      "duration": 1.543,
+      "image": "sha256:db39b908f53b3e97bdaa55a853831d72cde6a47127be70ee1592022cd18d73d3",
+      "charts": []
+    }
+  ],
+  "conclusions": [
+    "A01: independently matched pearson_r, n=120; raw p=1.951e-22, Holm-adjusted p=3.903e-22. Exploratory, unadjusted comparison; matching arithmetic does not establish study validity. Pearson r=0.7444. Pointwise 95% CI [0.6522, 0.8149]; not adjusted for selection or multiple testing.",
+    "A02: independently matched pearson_r, n=120; raw p=1.951e-22, Holm-adjusted p=3.903e-22. Exploratory, unadjusted comparison; matching arithmetic does not establish study validity. Pearson r=0.7444. Pointwise 95% CI [0.6522, 0.8149]; not adjusted for selection or multiple testing."
+  ],
+  "verification": [
+    {
+      "id": "A01",
+      "status": "matched",
+      "recipe": "pearson_r",
+      "n": 120,
+      "statistic": 0.7444378714027415,
+      "p_value": 1.9514331893924086e-22,
+      "effect": 0.7444378714027415,
+      "effect_name": "Pearson r",
+      "ci_low": 0.6522256343065335,
+      "ci_high": 0.8149386529136541,
+      "confidence_level": 0.95,
+      "interval_scope": "Pointwise, model-based 95% interval; not multiplicity- or selection-adjusted.",
+      "assumptions": [
+        "Independent observations; these intervals are not corrected for adaptive selection or multiple testing.",
+        "Pearson exact null p-value and Fisher-z interval assume independent bivariate-normal observations; linearity and outliers require review."
+      ],
+      "table": [
+        {
+          "n": 120,
+          "x_mean": -0.05014390562866441,
+          "y_mean": -0.14745464075263062
+        }
+      ],
+      "reason": "Sample, summary table, statistic and p-value match independent recomputation; effect and 95% interval computed by the host.",
+      "inference_eligible": true
+    },
+    {
+      "id": "A02",
+      "status": "matched",
+      "recipe": "pearson_r",
+      "n": 120,
+      "statistic": 0.7444378714027415,
+      "p_value": 1.9514331893924086e-22,
+      "effect": 0.7444378714027415,
+      "effect_name": "Pearson r",
+      "ci_low": 0.6522256343065335,
+      "ci_high": 0.8149386529136541,
+      "confidence_level": 0.95,
+      "interval_scope": "Pointwise, model-based 95% interval; not multiplicity- or selection-adjusted.",
+      "assumptions": [
+        "Independent observations; these intervals are not corrected for adaptive selection or multiple testing.",
+        "Pearson exact null p-value and Fisher-z interval assume independent bivariate-normal observations; linearity and outliers require review."
+      ],
+      "table": [
+        {
+          "n": 120,
+          "x_mean": -0.05014390562866441,
+          "y_mean": -0.14745464075263062
+        }
+      ],
+      "reason": "Sample, summary table, statistic and p-value match independent recomputation; effect and 95% interval computed by the host.",
+      "inference_eligible": true
+    }
+  ],
+  "reviews": [
+    {
+      "id": "A01",
+      "status": "caution",
+      "original_conclusion": "The Pearson correlation coefficient is {:.2f} with a p-value of {:.2f}. This indicates a linear relationship between x and y. However, the p-value does not provide strong evidence to claim a significant correlation. The 95% confidence interval for the correlation coefficient should be computed to better understand the uncertainty.",
+      "issues": [
+        {
+          "code": "adaptive_selection",
+          "message": "Holm adjustments describe the reported test family only. Adaptive selection, unreported tests, and invalid assumptions can still invalidate inference; use independent validation.",
+          "severity": "warning"
+        },
+        {
+          "code": "independence",
+          "message": "Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.",
+          "severity": "warning"
+        },
+        {
+          "code": "independent_verification",
+          "message": "Sample, summary table, statistic and p-value match independent recomputation; effect and 95% interval computed by the host.",
+          "severity": "warning"
+        },
+        {
+          "code": "unadjusted_comparison",
+          "message": "This comparison is unadjusted. Matching counts and p-values does not rule out confounding or establish causality.",
+          "severity": "warning"
+        },
+        {
+          "code": "generated_method",
+          "message": "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "id": "A02",
+      "status": "caution",
+      "original_conclusion": "Exploratory, unadjusted comparison; matching counts and p-values does not rule out confounding or establish causality.",
+      "issues": [
+        {
+          "code": "adaptive_selection",
+          "message": "Holm adjustments describe the reported test family only. Adaptive selection, unreported tests, and invalid assumptions can still invalidate inference; use independent validation.",
+          "severity": "warning"
+        },
+        {
+          "code": "independence",
+          "message": "Independent/exchangeable observations are assumed; the app cannot establish this from a CSV.",
+          "severity": "warning"
+        },
+        {
+          "code": "independent_verification",
+          "message": "Sample, summary table, statistic and p-value match independent recomputation; effect and 95% interval computed by the host.",
+          "severity": "warning"
+        },
+        {
+          "code": "unadjusted_comparison",
+          "message": "This comparison is unadjusted. Matching counts and p-values does not rule out confounding or establish causality.",
+          "severity": "warning"
+        },
+        {
+          "code": "generated_method",
+          "message": "Generated code, diagnostics, and assumptions require review; successful execution does not establish correctness.",
+          "severity": "warning"
+        }
+      ]
+    }
+  ],
+  "activity": [
+    {
+      "stage": "Profile",
+      "message": "Inspected 120 rows and 2 columns."
+    },
+    {
+      "stage": "Plan",
+      "message": "Generate and execute up to 2 Python investigations in disposable containers."
+    },
+    {
+      "stage": "Investigate",
+      "message": "Compute Pearson correlation of original numeric x and y, no binning."
+    },
+    {
+      "stage": "Evaluate",
+      "message": "A01: A01: independently matched pearson_r, n=120; raw p=1.951e-22, Holm-adjusted p=1.951e-22. Exploratory, unadjusted comparison; matching arithmetic does not establish study validity. Pearson r=0.7444. Pointwise 95% CI [0.6522, 0.8149]; not adjusted for selection or multiple testing. n=120."
+    },
+    {
+      "stage": "Replan",
+      "message": "Use the executed results to decide the next investigation."
+    },
+    {
+      "stage": "Investigate",
+      "message": "Compute Pearson correlation of original numeric x and y, no binning. Recipe pearson_r with verification_missing complete_case and verification_bins 0. Use scipy.stats.pearsonr; report its statistic and pvalue. Return a single summary row with n, x_mean and y_mean. The host will compute the Fisher-z 95% interval. Describe uncertainty; do not claim causality."
+    },
+    {
+      "stage": "Evaluate",
+      "message": "A02: A02: independently matched pearson_r, n=120; raw p=1.951e-22, Holm-adjusted p=3.903e-22. Exploratory, unadjusted comparison; matching arithmetic does not establish study validity. Pearson r=0.7444. Pointwise 95% CI [0.6522, 0.8149]; not adjusted for selection or multiple testing. n=120."
+    },
+    {
+      "stage": "Statistical review",
+      "message": "Holm adjustment across 2 reported tests. Results remain exploratory under adaptive selection."
+    },
+    {
+      "stage": "Complete",
+      "message": "Reached the 2-analysis budget."
+    }
+  ]
+}

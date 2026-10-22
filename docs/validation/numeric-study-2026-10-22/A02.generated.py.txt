@@ -1,0 +1,11 @@
+from pico_tools import load_dataset, save_result
+import pandas as pd
+import scipy.stats as stats
+
+df = load_dataset()
+paired = df[['x', 'y']].dropna()
+
+result = stats.pearsonr(paired['x'], paired['y'])
+table = [{'n': len(paired), 'x_mean': float(paired['x'].mean()), 'y_mean': float(paired['y'].mean())}]
+
+save_result(n=len(paired), table=table, statistic=float(result.statistic), p_value=float(result.pvalue), effect=None, conclusion="Exploratory, unadjusted comparison; matching counts and p-values does not rule out confounding or establish causality.", limitations=["Independent observations; these intervals are not corrected for adaptive selection or multiple testing.", "Pearson exact null p-value and Fisher-z interval assume independent bivariate-normal observations; linearity and outliers require review."], method="Pearson correlation", assumptions=["Independent observations; these intervals are not corrected for adaptive selection or multiple testing.", "Pearson exact null p-value and Fisher-z interval assume independent bivariate-normal observations; linearity and outliers require review."], diagnostics={"verification_test": "pearson_r", "verification_missing": "complete_case", "verification_bins": 0})

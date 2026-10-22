@@ -1,0 +1,40 @@
+from pico_tools import load_dataset, save_result
+import scipy.stats
+
+df = load_dataset()
+
+# Ensure complete cases
+paired = df[['x', 'y']].dropna()
+
+# Calculate Pearson correlation
+result = scipy.stats.pearsonr(paired['x'], paired['y'])
+
+# Prepare the table
+table = [
+    {
+        'n': len(paired),
+        'x_mean': float(paired['x'].mean()),
+        'y_mean': float(paired['y'].mean())
+    }
+]
+
+# Prepare diagnostics
+diagnostics = {
+    'verification_test': 'pearson_r',
+    'verification_missing': 'complete_case',
+    'verification_bins': 0
+}
+
+# Save the result
+save_result(
+    n=len(paired),
+    table=table,
+    statistic=float(result.statistic),
+    p_value=float(result.pvalue),
+    effect=None,
+    conclusion="The Pearson correlation coefficient is {:.2f} with a p-value of {:.2f}. This indicates a linear relationship between x and y. However, the p-value does not provide strong evidence to claim a significant correlation. The 95% confidence interval for the correlation coefficient should be computed to better understand the uncertainty.",
+    limitations=["The analysis is based on complete cases only, which may introduce bias if there is missingness in the data."],
+    method="Pearson correlation",
+    assumptions=["The data follows a bivariate normal distribution.", "There is no confounding or leakage.", "The sample size is sufficient for the analysis."],
+    diagnostics=diagnostics
+)

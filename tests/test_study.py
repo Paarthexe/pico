@@ -75,3 +75,58 @@ def test_valid_chronology_does_not_prove_temporal_independence():
 def test_missing_and_repeated_subject_ids_are_blocking():
     warnings = study_warnings(pd.DataFrame({"subject": ["a", "a", None]}), StudyContext(subject_id="subject"))
     assert {"repeated_subjects", "missing_subject_ids"} <= {w["code"] for w in warnings if w.get("blocking")}
+
+
+def test_post_outcome_columns_are_withheld_from_generated_execution():
+    from pico.models import ExecutionRecord, PythonProposal
+
+    class Planner:
+        def propose(self, run):
+            return PythonProposal("Check income", "fixture", "income", "churn")
+
+    class Executor:
+        def check_available(self):
+            pass
+
+        def execute(self, code, dataset, rows, execution_id):
+            columns = pd.read_csv(__import__("io").BytesIO(dataset)).columns
+            assert "future_score" not in columns
+            assert "income" in columns and "churn" in columns
+            return ExecutionRecord(execution_id, code, "error", 0, error="Fixture stopped after checking input")
+
+    run = investigate(
+        demo_dataset().assign(future_score=1),
+        "churn",
+        budget=1,
+        engine="python",
+        model="fixture",
+        planner=Planner(),
+        executor=Executor(),
+        study_context=StudyContext(post_outcome_columns=("future_score",)),
+    )
+    assert run.executions[0].status == "error"
+
+
+def test_replay_preserves_declared_post_outcome_exclusion():
+    from dataclasses import asdict
+
+    from pico.models import Evidence, ExecutionRecord, Hypothesis
+    from pico.report import replay_code
+
+    e = Evidence(
+        "A01",
+        asdict(Hypothesis("python", "x", "y", "fixture")),
+        4,
+        None,
+        None,
+        None,
+        "Fixture",
+        ["fixture"],
+        [{"n": 4}],
+        "untrusted_source()",
+        execution=ExecutionRecord("A01", "", "ok", 0),
+    )
+    replay = replay_code(e, ("future_score",))
+    assert "frame.drop(columns=['future_score'])" in replay
+    assert "DockerSandbox().execute" in replay
+    compile(replay, "<replay>", "exec")

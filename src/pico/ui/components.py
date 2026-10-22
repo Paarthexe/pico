@@ -157,7 +157,10 @@ def evidence_card(evidence: Evidence) -> None:
                     st.write(f"• {issue['message']}")
                 for assumption in evidence.assumptions:
                     st.write(f"Assumption: {assumption}")
+                for assumption in review.verification.get("assumptions", []):
+                    st.write(f"Host recipe assumption: {assumption}")
                 if evidence.diagnostics:
+                    st.caption("Model-reported diagnostics (not proof of study validity)")
                     st.json(evidence.diagnostics)
                 if review.adjusted_tests:
                     st.dataframe(pd.DataFrame(review.adjusted_tests), hide_index=True, width="stretch")

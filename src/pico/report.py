@@ -10,16 +10,18 @@ from pico.plotting import charts_for  # Compatibility public import.
 from pico.plotting import generate_plot as generate_plot
 
 
-def replay_code(evidence: Evidence) -> str:
+def replay_code(evidence: Evidence, post_outcome_columns: tuple[str, ...] = ()) -> str:
     if evidence.execution is None:
         return evidence.code
     return (
         "# Generated Python is passed to Docker, never executed on this host.\n"
         "from pathlib import Path\nfrom pico.data import load_csv\n"
         "from pico.sandbox import DockerSandbox\n"
-        'dataset = Path("dataset.csv").read_bytes()\n'
+        'frame = load_csv(Path("dataset.csv").read_bytes())\n'
+        f"frame = frame.drop(columns={list(post_outcome_columns)!r})\n"
+        "dataset = frame.to_csv(index=False).encode()\n"
         f"source = {evidence.code!r}\n"
-        f"result = DockerSandbox().execute(source, dataset, len(load_csv(dataset)), {evidence.id!r})\n"
+        f"result = DockerSandbox().execute(source, dataset, len(frame), {evidence.id!r})\n"
         'if result.status != "ok":\n    raise RuntimeError(result.error)\n'
         "print(result.result)\n"
     )
@@ -41,6 +43,17 @@ def markdown_report(run: Investigation) -> str:
     ]
     if not run.evidence:
         lines += ["No eligible analysis produced evidence.", ""]
+    context = run.study_context
+    if context.excluded_columns:
+        lines += [
+            "## Declared study context",
+            "",
+            f"Subject identifier: {context.subject_id or 'Unspecified'}.",
+            f"Observation timestamp: {context.observation_time or 'Unspecified'}.",
+            f"Outcome timestamp: {context.outcome_time or 'Unspecified'}.",
+            f"Post-outcome columns: {', '.join(context.post_outcome_columns) or 'None declared'}.",
+            "",
+        ]
     if run.multiplicity:
         lines += [
             "## Statistical review",
@@ -83,6 +96,7 @@ def markdown_report(run: Investigation) -> str:
             if e.review.original_conclusion != e.conclusion:
                 lines += ["Original interpretation (not endorsed):", e.review.original_conclusion, ""]
             lines += [*[f"- {issue['message']}" for issue in e.review.issues], ""]
+            lines += [*[f"- Recipe assumption: {a}" for a in e.review.verification.get("assumptions", [])], ""]
         for name, _ in charts_for(e):
             lines += [f"![{e.id} analysis chart](charts/{name})", ""]
         lines += [
@@ -91,7 +105,7 @@ def markdown_report(run: Investigation) -> str:
             "Replay through the installed Pico execution interface:",
             "",
             "```python",
-            replay_code(e),
+            replay_code(e, run.study_context.post_outcome_columns),
             "```",
             "",
         ]
@@ -136,7 +150,7 @@ def notebook(run: Investigation) -> str:
                 metadata={},
                 execution_count=None,
                 outputs=[],
-                source=replay_code(e).splitlines(keepends=True),
+                source=replay_code(e, run.study_context.post_outcome_columns).splitlines(keepends=True),
             )
         )
     return json.dumps(
@@ -179,7 +193,7 @@ def export_bundle(run: Investigation) -> bytes:
                 f"code/{e.id}.py",
                 "# Untrusted generated source: use replay/ to execute safely.\n" + e.code if e.execution else e.code,
             )
-            archive.writestr(f"replay/{e.id}.py", replay_code(e))
+            archive.writestr(f"replay/{e.id}.py", replay_code(e, run.study_context.post_outcome_columns))
         for record in run.executions:
             archive.writestr(f"attempts/{record.id}.json", json.dumps(asdict(record), indent=2, allow_nan=False))
     return output.getvalue()
